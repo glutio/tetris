@@ -10,8 +10,7 @@ table {
    margin:auto;
 }  
 #control {
-    margin-top:10px;
-    width:100%;
+    margin:auto;
     text-align:center;
 }
 #well td {
@@ -28,7 +27,8 @@ table {
     background-color: blue;
 
  }
- #left, #right, #rotate {
+ #control button {
+    margin:10px;
     width:50px;
     height: 50px;
  }
@@ -43,6 +43,9 @@ table {
     <td><button id="left">Left</button></td>
     <td><button id="rotate">Rot</button></td>
     <td><button id="right">Right</button></td>
+  </tr>
+  <tr>
+    <td colspan="3"><button id="drop">Drop</button></td>
   </tr>
 </table>               
 <!--<script src="tetris.js" /></script> -->
@@ -262,6 +265,9 @@ $("#well").keydown(function(event) {
 $("#left").click(function() { moveShape(-1,0); });
 $("#right").click(function() { moveShape(1,0); });
 $("#rotate").click(function() { rotateShape(); });
+$("#drop").click(function() { while(moveShape(0,1)); });
+
+
 var inPlay=false;
 function playGame()
 {
