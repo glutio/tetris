@@ -6,12 +6,20 @@
   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
   crossorigin="anonymous"></script>
 <style>
- #well td {
-    width: 30px;
-    height: 30px;
+table {
+   margin:auto;
+}  
+#control {
+    margin-top:10px;
+    width:100%;
+    text-align:center;
+}
+#well td {
+    width: 20px;
+    height: 20px;
     border-width: 0.5px;
     background-color: pink;
- }
+}
 
  #well td.nonempty {
     background-color: green;
@@ -21,18 +29,22 @@
 
  }
  #left, #right, #rotate {
-    width:80px;
-    height: 80px;
-    margin-left: 20px;
+    width:100px;
+    height: 100px;
  }
 </style>
 </head>
 <body>
+<div id="wrap">
 <table id="well" tabindex="1" ></table>
-<button id="left">Left</button>
-<button id="rotate">Rot</button>
-<button id="right">Right</button>
-               
+</div>
+<table id="control">
+  <tr>
+    <td><button id="left">Left</button></td>
+    <td><button id="rotate">Rot</button></td>
+    <td><button id="right">Right</button></td>
+  </tr>
+</table>               
 <!--<script src="tetris.js" /></script> -->
 <script>
 var shp=0;
