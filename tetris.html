@@ -53,6 +53,7 @@ table {
 var shp=0;
 var r=0;
 var pt = { x:0, y:0 };
+var spd = 800;
 var shapes = {
 B:[`
 **
@@ -244,7 +245,7 @@ $("#well").keydown(function(event) {
 	   }
            case "Space": {    
 		event.preventDefault();
-		changeShape();
+		while(moveShape(0,1)); //changeShape();
                 break;
            }
            case "Tab": {
@@ -278,6 +279,9 @@ function playGame()
         removeLines();
         pt.x=Math.floor((10-cur[0].length) / 2);
         pt.y=0;                      
+    	var oldTimer = timer;
+    	timer = setInterval(playGame, spd);
+    	clearInterval(oldTimer);
         nextShape();
         paintShape(true);
     };                
@@ -348,7 +352,10 @@ nextShape();
 pt.x=Math.floor((10-cur[0].length) / 2);
 paintShape(true);
 $("#well").focus();
-var timer = setInterval(playGame, 300);                                
+var timer = setInterval(playGame, spd);                                
+setInterval(function() {
+    spd=Math.max(0,spd-80);
+}, 60000);
 </script>
 
 </body>
