@@ -46,7 +46,9 @@ v *{
     display:none;
  }
  #again button {
-    height:60px;   
+    min-height:60px;   
+    max-width:130px;
+    overflow:hidden;
  }
 </style>
 </head>
@@ -299,13 +301,18 @@ function playGame()
     	timer = setInterval(playGame, spd);
     	clearInterval(oldTimer);
         nextShape();
-        var key = Object.keys(shapes)[shp];
-        var org = shapes[key][r].org;
-        pt.x=Math.floor((10-cur[0].length) / 2)+org.x;
-        pt.y=-cur.length;                      
+        dropShape();
         paintShape(true);
     };                
     inPlay = false;   
+}
+
+function dropShape()
+{
+    var key = Object.keys(shapes)[shp];
+    var org = shapes[key][r].org;
+    pt.x=Math.floor((10-cur[0].length) / 2)+org.x;
+    pt.y=-cur.length;                      
 }
 
 function showResetButton()
@@ -387,8 +394,7 @@ function reset()
     $("#well .nonempty").removeClass("nonempty").removeClass("shape");
     score = 0;
     nextShape();
-    pt.x=Math.floor((10-cur[0].length) / 2);
-    pt.y=-cur.length;
+    dropShape();
     spd = 800;    
     timer = setInterval(playGame, spd);                                   
     $("#well").focus();
