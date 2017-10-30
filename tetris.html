@@ -341,7 +341,9 @@ function moveShape(dx,dy)
 function removeLines()
 {  
    var ctLines = 0;
-   for(var yy=pt.y+cur.length-1;yy>=0;yy--)
+   var key = Object.keys(shapes)[shp];
+   var org = shapes[key][r].org;
+   for(var yy=pt.y+cur.length-1-org.y;yy>=0;yy--)
    {
       var line = getCell(0, yy).closest("tr").find("td");
       if (line.closest(".nonempty").length==10)
