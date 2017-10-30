@@ -34,7 +34,6 @@ v *{
  }
  #well td.nonempty.shape {
     background-color: blue;
-
  }
  
  #well td.nonempty[data-color="B"]
@@ -126,7 +125,9 @@ v *{
     <td id="right"></td>
   </tr>
   <tr>
-    <td colspan="3" id="drop"></td>
+    <td></td>
+    <td id="drop"></td>
+    <td></td>
   </tr>
 </table>               
 <!--<script src="tetris.js" /></script> -->
@@ -249,6 +250,7 @@ function makeShape(shape)
 }
 
 function initWell() {
+   var height = ($(window).height()-$("#control").height())/20;
    var well = $("#well");
    for(var i=0; i<20; i++)
    {
@@ -261,6 +263,8 @@ function initWell() {
         tr.append(td);
       }
    }
+   $("#well tr td").each(function() { $(this).css("height", height); });
+   $("#well tr td").each(function() { $(this).css("width", height); });
 } 
 
 function rotateShape()
