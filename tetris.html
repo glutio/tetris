@@ -300,7 +300,9 @@ function playGame()
     	timer = setInterval(playGame, spd);
     	clearInterval(oldTimer);
         nextShape();
-        pt.x=Math.floor((10-cur[0].length) / 2);
+        var key = Object.keys(shapes)[shp];
+        var org = shapes[key][r].org;
+        pt.x=Math.floor((10-cur[0].length) / 2)+org.x;
         pt.y=-cur.length;                      
         paintShape(true);
     };                
