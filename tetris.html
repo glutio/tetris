@@ -13,7 +13,6 @@ v *{
  border: 1px solid red;
 }
 #wrap {
-  position:relative;
     display:table;
     margin:auto;
 }
@@ -42,22 +41,21 @@ v *{
  }
  #again {
     position:absolute;
-    top:70px;
-    left:42px;
+    top:10%;
+    width:100%;    
     display:none;
  }
  #again button {
     height:60px;   
-    width:60px;
  }
 </style>
 </head>
 <body>
 <div id="wrap">
 <table id="well" tabindex="1" ></table>
-<div id="again">
-  <button>Again!</button>
-</div>
+<table id="again">
+  <tr><td><button>Again!</button></td></tr>
+</table>
 </div>
 <table id="control">
   <tr>
@@ -76,6 +74,7 @@ var r=0;
 var pt = { x:0, y:0 };
 var spd = 800;            
 var timer;
+var score = 0;
 var shapes = {
 B:[{org:{x:0,y:0}, s:`
 **
@@ -311,6 +310,7 @@ function playGame()
 
 function showResetButton()
 {
+   $("#again button").text("Score: "+score+". Try Again!");
    $("#again").show();
 }
 
@@ -340,11 +340,13 @@ function moveShape(dx,dy)
 
 function removeLines()
 {  
+   var ctLines = 0;
    for(var yy=pt.y+cur.length-1;yy>=0;yy--)
    {
       var line = getCell(0, yy).closest("tr").find("td");
       if (line.closest(".nonempty").length==10)
       {
+         ctLines++;
          var lineAbove;
          for(var y=yy;y>0; y--)
          {
@@ -359,7 +361,9 @@ function removeLines()
          }
          yy++; 
       }
-   }  
+   }
+   if (ctLines==4) ctLines*=2;
+   score += 10*ctLines;  
 }
 
 function paintShape(on)
@@ -379,12 +383,14 @@ function reset()
 {
     clearInterval(timer);
     $("#well .nonempty").removeClass("nonempty").removeClass("shape");
+    score = 0;
     nextShape();
     pt.x=Math.floor((10-cur[0].length) / 2);
     pt.y=-cur.length;
     spd = 800;    
     timer = setInterval(playGame, spd);                                   
     $("#well").focus();
+    
 }
 
 makeShapes();
