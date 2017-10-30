@@ -9,6 +9,14 @@
 table {
    margin:auto;
 }  
+v *{
+ border: 1px solid red;
+}
+#wrap {
+  position:relative;
+    display:table;
+    margin:auto;
+}
 #control {
     margin:auto;
     text-align:center;
@@ -32,11 +40,24 @@ table {
     width:50px;
     height: 50px;
  }
+ #again {
+    position:absolute;
+    top:70px;
+    left:42px;
+    display:none;
+ }
+ #again button {
+    height:60px;   
+    width:60px;
+ }
 </style>
 </head>
 <body>
 <div id="wrap">
 <table id="well" tabindex="1" ></table>
+<div id="again">
+  <button>Again!</button>
+</div>
 </div>
 <table id="control">
   <tr>
@@ -53,63 +74,66 @@ table {
 var shp=0;
 var r=0;
 var pt = { x:0, y:0 };
-var spd = 800;
+var spd = 800;            
+var timer;
 var shapes = {
-B:[`
+B:[{org:{x:0,y:0}, s:`
 **
-**`],
-I:[`
-****`,`
+**`}],
+I:[{org:{x:1,y:0}, s: `
+****`},{org:{x:0,y:1}, s:`
 *
 *
 *
-*`],
-LL:[`
+*`
+}],
+LL:[{org:{x:0,y:0}, s:`
  *
  *
-**`,`
+**`},{org:{x:0,y:0}, s:`
 *
-***`,`
+***`},{org:{x:0,y:0}, s:`
 **
 *
-*`,`
+*`},{org:{x:0,y:0}, s:`
 ***
-  *`],
-RL:[`
+  *`
+}],
+RL:[{org:{x:0,y:0}, s:`
 *
 *
-**`,`
+**`},{org:{x:0,y:0}, s:`
 ***
-*`,`
+*`},{org:{x:0,y:0}, s:`
 **
  *
- *`,`
+ *`},{org:{x:0,y:0}, s:`
   *
 ***`
-],
-T:[`
+}],
+T:[{org:{x:0,y:-1}, s:`
 ***
- *`,`
+ *`},{org:{x:0,y:0}, s:`
  *
 **
- *`,`
+ *`},{org:{x:0,y:0}, s:`
  *
-***`,`
+***`},{org:{x:-1,y:0}, s:`
 *
 **
-*`],
-LS:[`
+*`}],
+LS:[{org:{x:0,y:0}, s:`
 *
 **
- *`,`
+ *`},{org:{x:0,y:0}, s:`
  **
-**`],
-RS:[`
+**`}],
+RS:[{org:{x:0,y:0}, s:`
  *
 **
-*`,`
+*`},{org:{x:0,y:0}, s:`
 **      
- **`]
+ **`}]
 };
 
 function makeShapes()
@@ -118,7 +142,7 @@ function makeShapes()
    {
       var key = Object.keys(shapes)[p]; 
       for(var s=0; s<shapes[key].length; s++)
-            shapes[key][s] = makeShape(shapes[key][s]);
+            shapes[key][s].s = makeShape(shapes[key][s].s);
    }
 }
 
@@ -137,7 +161,7 @@ function nextShape()
    //  r=0;   
    //}
    //else r++;
-   cur=shapes[Object.keys(shapes)[shp]][r];
+   cur=shapes[Object.keys(shapes)[shp]][r].s;
 }
 
 function makeShape(shape)
@@ -185,10 +209,11 @@ function initWell() {
 function rotateShape()
 {
    var key = Object.keys(shapes)[shp];
-   for(var i=0; i<shapes[key].length; i++) {
-      var newR=(r+1)%shapes[key].length;
-      var newCur=shapes[key][newR];
-      if (isValidPos(newCur, { x: pt.x, y:pt.y })) {
+   for(var i=1; i<shapes[key].length; i++) {
+      var newR=(r+i)%shapes[key].length;
+      var newCur=shapes[key][newR].s;
+      var org=shapes[key][newR].org;
+      if (isValidPos(newCur, { x: pt.x-org.x, y:pt.y-org.y })) {
          paintShape(false);
          cur=newCur;   
          r=newR;
@@ -201,7 +226,7 @@ function rotateShape()
 function isValidPos(shape, pt)
 {
    if (pt.x<0 || pt.x+shape[0].length>10) return false;
-   if (pt.y<0 || pt.y+shape.length>20) return false;
+   if (pt.y+shape.length>20) return false;
 
    for(var y=0; y<shape.length; y++) {
      for(var x=0; x<shape[y].length; x++) {
@@ -218,7 +243,7 @@ function changeShape()
    shp=(shp+1)%Object.keys(shapes).length;
    r=0;
    var key = Object.keys(shapes)[shp];
-   cur=shapes[key][r];
+   cur=shapes[key][r].s;
    paintShape(true);  
 }
 
@@ -234,7 +259,6 @@ $("#well").keydown(function(event) {
 		moveShape(-1,0);break;
 	   }
            case "ArrowUp": {
-		//moveShape(0,-1);break;
 		event.preventDefault();
                 rotateShape();break;
 	   }
@@ -245,19 +269,7 @@ $("#well").keydown(function(event) {
 	   }
            case "Space": {    
 		event.preventDefault();
-		while(moveShape(0,1)); //changeShape();
-                break;
-           }
-           case "Tab": {
-               event.preventDefault();
-	       removeLines(); break;
-           }
-	   case "Enter": {
-//		console.log(event);
-	        embedShape();
-		pt.x=0; pt.y=0;
-                //nextShape();
-//		paintShape(true);
+		while(moveShape(0,1));
                 break;
            }
         }
@@ -267,7 +279,7 @@ $("#left").click(function() { moveShape(-1,0); });
 $("#right").click(function() { moveShape(1,0); });
 $("#rotate").click(function() { rotateShape(); });
 $("#drop").click(function() { while(moveShape(0,1)); });
-
+$("#again").click(function() { $(this).hide(); reset(); });
 
 var inPlay=false;
 function playGame()
@@ -275,21 +287,33 @@ function playGame()
     if (inPlay) return;
     inPlay = true;
     if (!moveShape(0,1)) {                   
+        if (pt.y<0)
+        {
+           clearInterval(timer);
+           inPlay = false;
+           showResetButton();
+           return;
+        }
         embedShape();
         removeLines();
-        pt.x=Math.floor((10-cur[0].length) / 2);
-        pt.y=0;                      
     	var oldTimer = timer;
     	timer = setInterval(playGame, spd);
     	clearInterval(oldTimer);
         nextShape();
+        pt.x=Math.floor((10-cur[0].length) / 2);
+        pt.y=-cur.length;                      
         paintShape(true);
     };                
     inPlay = false;   
 }
 
-function getCell(x,y)
+function showResetButton()
 {
+   $("#again").show();
+}
+
+function getCell(x,y)
+{          
    var name = "#well ._"+Number(y)+"_"+Number(x);
    var result = $(name);
    return result;
@@ -302,7 +326,9 @@ function embedShape()
 
 function moveShape(dx,dy)
 {
-   if (!isValidPos(cur, { x: pt.x+dx, y: pt.y+dy })) return false;
+   var key = Object.keys(shapes)[shp];
+   var org = shapes[key][r].org;
+   if (!isValidPos(cur, { x: (pt.x+dx)-org.x, y: (pt.y+dy)-org.y })) return false;
    paintShape(false);
    pt.x+=dx;
    pt.y+=dy;
@@ -336,23 +362,34 @@ function removeLines()
 
 function paintShape(on)
 {
+   var key = Object.keys(shapes)[shp];
+   var org = shapes[key][r].org;
    for(var y=0; y< cur.length; y++)
      for(var x=0; x< cur[y].length; x++) 
 	if (cur[y][x]=='*') {
-	    var cell = getCell(pt.x+x,pt.y+y) 
+	    var cell = getCell((pt.x+x)-org.x,(pt.y+y)-org.y) 
 	    if (on) cell.addClass("nonempty").addClass("shape"); 
 		else cell.removeClass("nonempty").removeClass("shape");
         }
 }
 
+function reset()
+{
+    clearInterval(timer);
+    $("#well .nonempty").removeClass("nonempty").removeClass("shape");
+    nextShape();
+    pt.x=Math.floor((10-cur[0].length) / 2);
+    pt.y=-cur.length;
+    spd = 800;    
+    timer = setInterval(playGame, spd);                                   
+    $("#well").focus();
+}
 
 makeShapes();
 initWell();
 nextShape();
-pt.x=Math.floor((10-cur[0].length) / 2);
 paintShape(true);
-$("#well").focus();
-var timer = setInterval(playGame, spd);                                
+reset();
 setInterval(function() {
     spd=Math.max(0,spd-80);
 }, 60000);
