@@ -240,10 +240,13 @@ function getRandomInt(min, max) {
 
 function nextShape()
 {
-   shp = getRandomInt(0, Object.keys(shapes).length);
-   if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") {
+   var isAlmostEmpty = getCell(0,15).closest("tr").find("td").closest(".nonempty").length == 0;
+   do {
      shp = getRandomInt(0, Object.keys(shapes).length);
-   }
+     if ((Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") && !isAlmostEmpty) continue;
+     break;
+   } while (true);
+
    r = getRandomInt(0, shapes[Object.keys(shapes)[shp]].length);
    cur = shapes[Object.keys(shapes)[shp]][r].s;
 }
