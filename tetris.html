@@ -65,10 +65,24 @@ v *{
  {
    background-color:green;
  }
+ #well td.nonempty[data-color="TAK"]
+ {
+   background-color:black;
+ }
+
+ #well td.nonempty[data-color="H"]
+ {
+   background-color:deeppink;
+ }
+
 
 #control {
   border-spacing:15px;
 } 
+
+#control.landscape {
+   float:right;
+}
 #control td {
     margin-left:10px;
     margin-right:10px;
@@ -195,7 +209,17 @@ RS:[{org:{x:0,y:0}, s:`
 **
 *`},{org:{x:0,y:0}, s:`
 **
- **`}]
+ **`}],
+TAK:[{org:{x:0,y:0}, s:`
+*** ** * *
+ *  ** **
+ * * * * *`}],
+H:[{org:{x:0,y:0}, s:`
+ * *
+*****
+*****
+ ***
+  *`}]
 };
 
 function makeShapes()
@@ -217,8 +241,10 @@ function getRandomInt(min, max) {
 function nextShape()
 {
    shp = getRandomInt(0, Object.keys(shapes).length);
+   if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") {
+     shp = getRandomInt(0, Object.keys(shapes).length);
+   }
    r = getRandomInt(0, shapes[Object.keys(shapes)[shp]].length);
-
    cur = shapes[Object.keys(shapes)[shp]][r].s;
 }
 
@@ -342,6 +368,31 @@ $("#rotate").click(function() { rotateShape(); });
 $("#drop").click(function() { dropShape(); });
 $("#well").click(function() { moveShape(0,1); });
 $("#again").click(function() { $(this).hide(); reset(); });
+
+$(window).bind('orientationchange', function(e) {
+ switch ( window.orientation ) {
+  case 0:
+    $('#control').removeClass("landscape");
+    // The device is in portrait mode now
+  break;
+
+  case 180:
+    $('#control').removeClass("landscape");
+    // The device is in portrait mode now
+  break;
+
+  case 90:
+    // The device is in landscape now
+    $('#control').addClass("landscape");
+  break;
+
+  case -90:
+    // The device is in landscape now
+    $('#control').addClass("landscape");
+  break;
+ }
+});
+
 var inPlay=false;
 function playGame()
 {
@@ -432,7 +483,7 @@ function removeLines()
             for(var c=0; c<10; c++) {
               if ($(lineAbove[c]).hasClass("nonempty")) {
                  $(line[c]).addClass("nonempty");              
-                 $(line[c]).attr("data-color",$(lineAbove[c]).data("color"));              
+                 $(line[c]).attr("data-color",$(lineAbove[c]).attr("data-color"));              
               }
               else {                 
                  $(line[c]).removeClass("nonempty"); 
