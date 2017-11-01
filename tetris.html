@@ -36,8 +36,8 @@ v *{
 
 #sidebar {
   position:absolute;
-  right: left 2%;
-  top: 30%;
+  right: 2%;
+  top: 5%;
   text-align:center;
   font-family:monospace;
   font-size: 20px;
@@ -160,7 +160,7 @@ v *{
 }
 #again div {    
     margin:auto;
-    font-size:300%;
+    font-size:200%;
     background: rgba(247, 239, 215, 0.9); 
     color: darkred;
     font-weight:bold;
@@ -628,10 +628,10 @@ function removeLines()
          yy++; 
       }
    }
-
+   if (!lineScore) lineScore = 1;
    if (ctLines==4) lineScore*=2;
    score += lineScore;
-   $("#sidebar").text(score);  
+   $("#sidebar").text(score);
 }
 
 function _paintShape(well, shape, org, color, show)
