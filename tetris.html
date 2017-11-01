@@ -83,7 +83,21 @@ v *{
  .well td.nonempty[data-color="TAK"]
  {
    background-color:black;
+   animation: colorchange 5s infinite; /* animation-name followed by duration in seconds*/
+         /* you could also use milliseconds (ms) or something like 2.5s */
+   -webkit-animation: colorchange 5s infinite; /* Chrome and Safari */
+    -webkit-animation-direction: alternate; /* Safari 4.0 - 8.0 */
+    animation-direction: alternate;
  }
+ 
+@keyframes colorchange {
+      0%   {background: #a79019;}
+      25%  {background: #dfbb03;}
+      50%  {background: #f8d62d;}
+      75%  {background: #ffb400;}
+      100% {background: #ff6c00;}
+}
+
  .well td.nonempty[data-color="H"]
  {
    background-color:deeppink;
