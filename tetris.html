@@ -27,7 +27,7 @@ v *{
 
 #next-well .shape 
 {
-  box-shadow: 2px 2px 18px 0px rgba(0, 0, 0, 0.43);
+  box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.5);
   opacity:0.5;
 }
 .tetris td {
@@ -102,8 +102,6 @@ v *{
   vertical-align:top;
   height:30%;
   min-width:30%;
-  padding-left:10px;
-  padding-top:10px;
   text-align:right;  
 }
 
@@ -320,7 +318,7 @@ function nextShape()
    } while (true); 
 
    var org = shapes[Object.keys(shapes)[paintShp]][paintR].org;
-   var height = $("#well ._0_0").height()*.9;
+   var height = $("#well ._0_0").height();
    _initWell(nextWell, paintCur[0].length, paintCur.length, height);
    _paintShape(nextWell, paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
 }
