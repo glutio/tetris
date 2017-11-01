@@ -17,9 +17,11 @@ v *{
 #layout {
   width:100%
 }
+
 #wrap {
    position:relative;
 }
+
 
 #next-well {
   position: absolute;
@@ -171,7 +173,7 @@ v *{
 <body>
 <table id="layout"> 
    <tr>
-     <td rowspan="2">
+     <td rowspan="2" id="wrap-wrap">
       <div id="wrap">
          <table id="well" class="well tetris" tabindex="1" ></table>
          <table id="next-well" class="well"></table>
@@ -411,6 +413,8 @@ function initControl()
    var doc = $(document);
    if (doc.height() >= doc.width()) {
 	$("#bottom-control").show();
+        $("#sidebar").hide();
+	$("#side-control-wrap").hide();
    } else {
 	$("#side-control").css('display', 'inline-block');
    } 
