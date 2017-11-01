@@ -10,11 +10,13 @@ table {
    margin:auto;
    border-spacing: 0px;
 }  
-
-v *{
+ *{
  border: 1px solid red;
 }
 
+#layout {
+  width:100%
+}
 #wrap {
    position:relative;
 }
@@ -22,7 +24,7 @@ v *{
 #next-well {
   position: absolute;
   top:3%;
-  right: -5%;
+  left: 3%;
 }
 
 #next-well .shape 
@@ -164,7 +166,7 @@ v *{
 </style>
 </head>
 <body>
-<table> 
+<table id="layout"> 
    <tr>
      <td rowspan="2">
       <div id="wrap">
