@@ -22,11 +22,10 @@ v *{
    position:relative;
 }
 
-
 #next-well {
   position: absolute;
-  top:3%;
-  left: 3%;
+  left: 2%;
+  top: 5%;
 }
 
 #next-well .shape 
@@ -34,6 +33,19 @@ v *{
   box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.5);
   opacity:0.5;
 }
+
+#sidebar {
+  position:absolute;
+  right: left 2%;
+  top: 30%;
+  text-align:center;
+  font-family:monospace;
+  font-size: 20px;
+  font-weight:bold;
+  color:rgba(40, 40, 40, 0.5);;
+}
+
+
 .tetris td {
     background-color: #ffdae1;
     border-width: 0.5;
@@ -119,12 +131,6 @@ v *{
 #side-control-wrap {
   text-align:right;
 }
-#sidebar {
-  vertical-align:top;
-  height:30%;
-  min-width:30%;
-  text-align:right;
-}
 
 #control {
   border-spacing:15px;
@@ -144,17 +150,34 @@ v *{
  }
 
 #again {
-    position:absolute;
-    top:10%;
-    width:100%;    
     display:none;
+    text-align:center;
+    position:absolute;
+    left:0;
+    right:0;
+    top:20%;
+    bottom:0;
 }
+#again div {    
+    margin:auto;
+    font-size:300%;
+    background: rgba(247, 239, 215, 0.9); 
+    color: darkred;
+    font-weight:bold;
+    
+    text-shadow:3px -4px 7px rgba(199,199,199,1);
+    border: 14px dotted #b5a759;
+    text-align:center;
+    font-family:serif;
+    padding:35px;
+}
+#again div p {
+  padding:0;
+  margin:5px;
+  width:100%
+}    
 
-#again button {
-    min-height:60px;   
-    max-width:130px;
-    overflow:hidden;
-}
+
  #right {
     background:url(data:image/png;base64,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);
  }
@@ -177,12 +200,13 @@ v *{
       <div id="wrap">
          <table id="well" class="well tetris" tabindex="1" ></table>
          <table id="next-well" class="well"></table>
+         <div id="sidebar"></div>
+         <div id="again">
+           <div>Again!</div>
+         </div>
       </div>
-      <table id="again">
-        <tr><td><button>Again!</button></td></tr>
-      </table>
      </td>
-     <td id="sidebar">
+     <td>
      </td>
   </tr>  
   <tr>
@@ -413,7 +437,7 @@ function initControl()
    var doc = $(document);
    if (doc.height() >= doc.width()) {
 	$("#bottom-control").show();
-        $("#sidebar").hide();
+        //$("#sidebar").hide();
 	$("#side-control-wrap").hide();
    } else {
 	$("#side-control").css('display', 'inline-block');
@@ -534,7 +558,8 @@ function dropShape()
 
 function showResetButton()
 {
-   $("#again button").text("Score: "+score+". Try Again!");
+   
+   $("#again div").html("<p>Score: "+score+"</p><p>Try Again!</>");
    $("#again").show();
 }
 
@@ -570,15 +595,17 @@ function moveShape(dx,dy)
 function removeLines()
 {  
    var ctLines = 0;
+   var lineScore = 0;
    var key = Object.keys(shapes)[shp];
    var org = shapes[key][r].org;
    for(var yy=pt.y+cur.length-1-org.y;yy>=0;yy--)
    {
       var line = getCell(0, yy).closest("tr").find("td");
-      var blocks=line.closest(".nonempty").length;
-      if (blocks==0) break; 
-      if (blocks==10)
+      var blocks=line.closest(".nonempty");
+      if (blocks.length==0) break; 
+      if (blocks.length==10)
       {
+         blocks.each(function() { lineScore += Math.max(0, Object.keys(shapes).indexOf($(this).attr("data-color"))); });
          ctLines++;
          var lineAbove;
          for(var y=yy;y>0; y--)
@@ -601,8 +628,10 @@ function removeLines()
          yy++; 
       }
    }
-   if (ctLines==4) ctLines*=2;
-   score += 10*ctLines;  
+
+   if (ctLines==4) lineScore*=2;
+   score += lineScore;
+   $("#sidebar").text(score);  
 }
 
 function _paintShape(well, shape, org, color, show)
@@ -628,6 +657,7 @@ function reset()
     clearInterval(timer);
     $("#well .nonempty").removeClass("nonempty").removeClass("shape");
     score = 0;
+    $("#sidebar").text(score);  
     nextShape();
     releaseShape();
     spd = 800;    
