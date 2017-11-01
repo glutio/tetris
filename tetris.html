@@ -10,70 +10,107 @@ table {
    margin:auto;
    border-spacing: 0px;
 }  
+
 v *{
  border: 1px solid red;
 }
-#wrap {
-    display:table;
-    margin:auto;
-}
+
 #control {
     margin:auto;
     text-align:center;
 }
-#well td {
-    width: 12px;
-    height: 12px;
-    border-width: 0.5;
+
+#wrap {
+   position:relative;
+}
+
+#next-well {
+  position: absolute;
+  top:3%;
+  right: -5%;
+}
+
+#next-well .shape 
+{
+  box-shadow: 2px 2px 18px 0px rgba(0, 0, 0, 0.43);
+  opacity:0.5;
+}
+.tetris td {
     background-color: #ffdae1;
+    border-width: 0.5;
     border-style: outset;
 }
 
- #well td.nonempty {
+.well td.nonempty {
+    border-width: 0.5;
+    border-style: outset;
+    width: 12px;
+    height: 12px;
+}
+
+.well td.nonempty,
+{
     background-color: green;
- }
- #well td.nonempty.shape {
+}
+ 
+ .well td.nonempty.shape {
     background-color: blue;
  }
  
- #well td.nonempty[data-color="B"]
+ .well td.nonempty[data-color="B"]
  {
   background-color:blue;
  }
- #well td.nonempty[data-color="I"]
+ .well td.nonempty[data-color="I"]
  {
   background-color:red;
  }
- #well td.nonempty[data-color="T"]
+ .well td.nonempty[data-color="T"]
  {
   background-color:darkorange;
  }
- #well td.nonempty[data-color="LL"]
+ .well td.nonempty[data-color="LL"]
  {
   background-color:gray;
  }
-
- #well td.nonempty[data-color="RL"]
+ .well td.nonempty[data-color="RL"]
  {
   background-color:magenta;
  }
- #well td.nonempty[data-color="LS"]
+ .well td.nonempty[data-color="LS"]
  {
   background-color:darkcyan;
  }
- #well td.nonempty[data-color="RS"]
+ .well td.nonempty[data-color="RS"]
  {
    background-color:green;
  }
- #well td.nonempty[data-color="TAK"]
+ .well td.nonempty[data-color="TAK"]
  {
    background-color:black;
  }
-
- #well td.nonempty[data-color="H"]
+ .well td.nonempty[data-color="H"]
  {
    background-color:deeppink;
  }
+
+
+#bottom-control {
+  display:none;
+}
+
+#side-control {
+  display:none;
+}
+
+#sidebar {
+  vertical-align:top;
+  height:30%;
+  min-width:30%;
+  padding-left:10px;
+  padding-top:10px;
+  text-align:right;  
+}
 
 
 #control {
@@ -87,12 +124,8 @@ v *{
     margin-left:10px;
     margin-right:10px;
     margin-top:10px;
-    width:60px;
+    width: 60px;
     height: 60px;
-   /* border-width: 1px;
-    border-style: solid;
-    border-radius: 50%;
-    background-color:lightgray; */   
     background-position:center;
     background-repeat: no-repeat;    
     background-size: 60px 60px;
@@ -126,26 +159,49 @@ v *{
 </style>
 </head>
 <body>
-<div id="wrap">
-<table id="well" tabindex="1" ></table>
-<table id="again">
-  <tr><td><button>Again!</button></td></tr>
+<table> 
+   <tr>
+     <td rowspan="2">
+      <div id="wrap">
+         <table id="well" class="well tetris" tabindex="1" ></table>
+         <table id="next-well" class="well"></table>
+      </div>
+      <table id="again">
+        <tr><td><button>Again!</button></td></tr>
+      </table>
+     </td>
+     <td id="sidebar">
+     </td>
+  </tr>  
+  <tr>
+     <td>
+       <div id="side-control"></div>
+     </td>    
+  </tr>
+  <tr>
+    <td id="bottom-control" colspan=2>
+      <table id="control">
+        <tr>
+          <td id="left">Left</td>
+          <td id="rotate"></td>
+          <td id="right"></td>
+        </tr>
+        <tr>
+          <td></td>
+          <td id="drop"></td>
+          <td></td>
+        </tr>
+      </table>               
+    </td>
+ </tr>
 </table>
-</div>
-<table id="control">
-  <tr>
-    <td id="left">Left</td>
-    <td id="rotate"></td>
-    <td id="right"></td>
-  </tr>
-  <tr>
-    <td></td>
-    <td id="drop"></td>
-    <td></td>
-  </tr>
-</table>               
+
 <!--<script src="tetris.js" /></script> -->
 <script>
+var nextShp = 0;
+var nextR = 0;
+var nextCur = 0;
+var cur = 0;
 var shp=0;
 var r=0;
 var pt = { x:0, y:0 };
@@ -240,15 +296,40 @@ function getRandomInt(min, max) {
 
 function nextShape()
 {
-   var isAlmostEmpty = getCell(0,15).closest("tr").find("td").closest(".nonempty").length == 0;
-   do {
-     shp = getRandomInt(0, Object.keys(shapes).length);
-     if ((Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") && !isAlmostEmpty) continue;
-     break;
-   } while (true);
+   var paintShp = nextShp;
+   var paintCur = nextCur;
 
-   r = getRandomInt(0, shapes[Object.keys(shapes)[shp]].length);
-   cur = shapes[Object.keys(shapes)[shp]][r].s;
+   cur = nextCur;
+   shp = nextShp; 
+   r = nextR;
+   
+   var nextWell = $("#next-well");
+   _paintShape(nextWell, nextCur, { x:0, y:0 }, Object.keys(shapes)[nextShp], false);
+	
+   var isAlmostEmpty = getCell(0,15).closest("tr").find("td").closest(".nonempty").length == 0;    
+   do {
+     nextShp = getRandomInt(0, Object.keys(shapes).length);
+     nextR = getRandomInt(0, shapes[Object.keys(shapes)[nextShp]].length);
+     nextCur = shapes[Object.keys(shapes)[nextShp]][nextR].s;
+     if ((Object.keys(shapes)[nextShp]=="TAK" || Object.keys(shapes)[nextShp]=="H")) {
+        if (!isAlmostEmpty) continue;
+        paintShp = getRandomInt(0, Object.keys(shapes).length-2);
+        paintCur = shapes[Object.keys(shapes)[paintShp]][0].s;
+        paintR = 0;             
+     }
+     else
+     {
+     	paintShp = nextShp;
+        paintCur = nextCur;
+        paintR = nextR;
+     }     
+     break;
+   } while (true); 
+
+   var org = shapes[Object.keys(shapes)[paintShp]][paintR].org;
+   var height = $("#well ._0_0").height()*.9;
+   _initWell(nextWell, paintCur[0].length, paintCur.length, height);
+   _paintShape(nextWell, paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
 }
 
 function makeShape(shape)
@@ -258,7 +339,7 @@ function makeShape(shape)
    var maxX=0;
    for(var c=0; c<shape.length; c++)
    {
-     if (shape[c]=='\n') { y++; maxX=Math.max(x, maxX); x=0; } else { x++; }     
+     if (shape[c]=='\n') { y++; maxX=Math.max(x, maxX); x=0; } else { x++; }
    }
    maxX=Math.max(x, maxX);   
    
@@ -278,23 +359,54 @@ function makeShape(shape)
    return s;   
 }
 
-function initWell() {
-   var height = ($(window).height()-$("#control").height())/20;
-   var well = $("#well");
-   for(var i=0; i<20; i++)
+function _initWell(well, x, y, size) {
+   well.find("tr").each(function() { $(this).remove(); });
+   for(var i=0; i<y; i++)
    {
       var tr=$("<tr/>");
       well.append(tr);
-      for(var j=0; j<10; j++)
+      for(var j=0; j<x; j++)
       {   
         var td = $("<td/>");
         td.addClass("_"+i+"_"+j);
         tr.append(td);
       }
    }
-   $("#well tr td").each(function() { $(this).css("height", height); });
-   $("#well tr td").each(function() { $(this).css("width", height); });
+   well.find("td").css("height", size);
+   well.find("td").css("width", size);
+}
+
+function initWell() {
+   var height = $("body").height();
+   if ($("#bottom-control").is(":visible")) {
+	height-=$("#bottom-control").height();
+   }
+   height/=20;
+   
+   var well = $("#well");
+   _initWell(well, 10, 20, height);
 } 
+
+function initControl()
+{
+   var controlClone = $("#control").clone(true);
+   $("#side-control").append(controlClone);
+   $("#left").click(function() { moveShape(-1,0); });
+   $("#right").click(function() { moveShape(1,0); });
+   $("#rotate").click(function() { rotateShape(); });
+   $("#drop").click(function() { dropShape(); });
+   $("#well").click(function() { moveShape(0,1); });
+   
+   var doc = $(document);
+   if (doc.height() >= doc.width()) {
+	$("#bottom-control").show();
+   } else {
+	$("#side-control").show();
+   } 
+   
+   $("#again").click(function() { $(this).hide(); reset(); });
+
+}
 
 function rotateShape()
 {
@@ -365,36 +477,6 @@ $("#well").keydown(function(event) {
         }
 });
 
-$("#left").click(function() { moveShape(-1,0); });
-$("#right").click(function() { moveShape(1,0); });
-$("#rotate").click(function() { rotateShape(); });
-$("#drop").click(function() { dropShape(); });
-$("#well").click(function() { moveShape(0,1); });
-$("#again").click(function() { $(this).hide(); reset(); });
-
-$(window).bind('orientationchange', function(e) {
- switch ( window.orientation ) {
-  case 0:
-    $('#control').removeClass("landscape");
-    // The device is in portrait mode now
-  break;
-
-  case 180:
-    $('#control').removeClass("landscape");
-    // The device is in portrait mode now
-  break;
-
-  case 90:
-    // The device is in landscape now
-    $('#control').addClass("landscape");
-  break;
-
-  case -90:
-    // The device is in landscape now
-    $('#control').addClass("landscape");
-  break;
- }
-});
 
 var inPlay=false;
 function playGame()
@@ -441,12 +523,17 @@ function showResetButton()
    $("#again").show();
 }
 
-function getCell(x,y)
+function _getCell(well, x,y)
 {          
-   var name = "#well ._"+Number(y)+"_"+Number(x);
-   var result = $(name);
+   var name = well.find("._"+Number(y)+"_"+Number(x));
+	   var result = $(name);
    return result;
 }
+
+function getCell(x,y) {
+  return _getCell($("#well"),x,y);
+}
+
 
 function embedShape()
 {
@@ -503,17 +590,22 @@ function removeLines()
    score += 10*ctLines;  
 }
 
+function _paintShape(well, shape, org, color, show)
+{
+  for(var y=0; y< shape.length; y++)
+     for(var x=0; x< shape[y].length; x++) 
+	if (shape[y][x]=='*') {
+	    var cell = _getCell(well, (org.x+x),(org.y+y)) 
+	    if (show) cell.addClass("nonempty").addClass("shape").attr("data-color",color); 
+		else cell.removeClass("nonempty").removeClass("shape").attr("data-color","");
+        } 
+}
+
 function paintShape(on)
 {
    var key = Object.keys(shapes)[shp];
    var org = shapes[key][r].org;
-   for(var y=0; y< cur.length; y++)
-     for(var x=0; x< cur[y].length; x++) 
-	if (cur[y][x]=='*') {
-	    var cell = getCell((pt.x+x)-org.x,(pt.y+y)-org.y) 
-	    if (on) cell.addClass("nonempty").addClass("shape").attr("data-color",key); 
-		else cell.removeClass("nonempty").removeClass("shape").attr("data-color","");
-        }
+   _paintShape($("#well"), cur, { x: pt.x-org.x, y:pt.y-org.y }, key, on);
 }
 
 function reset()
@@ -530,6 +622,7 @@ function reset()
 }
 
 makeShapes();
+initControl();
 initWell();
 nextShape();
 paintShape(true);
