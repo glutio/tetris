@@ -155,12 +155,12 @@ v *{
     position:absolute;
     left:0;
     right:0;
-    top:20%;
+    top:10%;
     bottom:0;
 }
 #again div {    
     margin:auto;
-    font-size:200%;
+    font-size:150%;
     background: rgba(247, 239, 215, 0.9); 
     color: darkred;
     font-weight:bold;
@@ -520,7 +520,6 @@ $("#well").keydown(function(event) {
 var inPlay=false;
 function playGame()
 {
-    if (inPlay) return;
     inPlay = true;
     if (!moveShape(0,1)) {                   
         if (pt.y<0)
@@ -528,11 +527,11 @@ function playGame()
            clearInterval(timer);
            inPlay = false;
            showResetButton();
+           inPlay = false;
            return;
         }
         dropShape();
     };                
-    inPlay = false;   
 }
 
 function releaseShape()
@@ -545,6 +544,7 @@ function releaseShape()
 
 function dropShape()
 {
+        if (!inPlay) return;
         while(moveShape(0,1));
         embedShape();
         removeLines();
@@ -554,6 +554,7 @@ function dropShape()
         nextShape();
         releaseShape();
         paintShape(true);
+        playGame();
 }
 
 function showResetButton()
