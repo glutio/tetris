@@ -111,14 +111,17 @@ v *{
 }
 
 #side-control {
-  display:none;
+  display:none;  
 }
 
+#side-control-wrap {
+  text-align:right;
+}
 #sidebar {
   vertical-align:top;
   height:30%;
   min-width:30%;
-  text-align:right;  
+  text-align:right;
 }
 
 #control {
@@ -181,8 +184,8 @@ v *{
      </td>
   </tr>  
   <tr>
-     <td>
-       <div id="side-control"></div>
+     <td id="side-control-wrap">
+        <div id="side-control"></div>
      </td>    
   </tr>
   <tr>
@@ -409,7 +412,7 @@ function initControl()
    if (doc.height() >= doc.width()) {
 	$("#bottom-control").show();
    } else {
-	$("#side-control").show();
+	$("#side-control").css('display', 'inline-block');
    } 
    
    $("#again").click(function() { $(this).hide(); reset(); });
