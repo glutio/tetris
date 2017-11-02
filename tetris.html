@@ -240,6 +240,7 @@ v *{
 
 <!--<script src="tetris.js" /></script> -->
 <script>
+var wellSize = { width: 10, height: 20 }
 var nextShp = 0;
 var nextR = 0;
 var nextCur = 0;
@@ -427,10 +428,10 @@ function initWell() {
    if ($("#bottom-control").is(":visible")) {
 	height-=$("#bottom-control").height();
    }
-   height/=20;
+   height/=wellSize.height;
    
    var well = $("#well");
-   _initWell(well, 10, 20, height);
+   _initWell(well, wellSize.width, wellSize.height, height);
    $("#sidebar").css("font-size", Math.max(20, 1.2*height)+"px");
 } 
 
@@ -477,8 +478,8 @@ function rotateShape()
 
 function isValidPos(shape, pt)
 {
-   if (pt.x<0 || pt.x+shape[0].length>10) return false;
-   if (pt.y+shape.length>20) return false;
+   if (pt.x<0 || pt.x+shape[0].length>wellSize.width) return false;
+   if (pt.y+shape.length>wellSize.height) return false;
 
    for(var y=0; y<shape.length; y++) {                                                                                               
      for(var x=0; x<shape[y].length; x++) {
@@ -586,7 +587,7 @@ function releaseShape()
 {
     var key = Object.keys(shapes)[shp];
     var org = shapes[key][r].org;
-    pt.x=Math.floor((10-cur[0].length) / 2)+org.x;
+    pt.x=Math.floor((wellSize.width-cur[0].length) / 2)+org.x;
     pt.y=-cur.length;                      
 }
 
@@ -655,13 +656,17 @@ function removeLines()
    var ctLines = 0;
    var lineScore = 0;
    var key = Object.keys(shapes)[shp];
-   var org = shapes[key][r].org;
-   for(var yy=pt.y+cur.length-1-org.y;yy>=0;yy--)
+   var org = shapes[key][r].org;   
+      
+   var bottomShapeBlock = 0; 	
+   $("#well td.shape").each(function() { bottonShapeBlock = Math.max(bottomShapeBlock, Number($(this).attr("data-y"))); });	
+   //pt.y+cur.length-1-org.y
+   for(var yy=wellSize.height-1 ;yy>=0;yy--)
    {
       var line = getCell(0, yy).closest("tr").find("td");
-      var blocks=line.closest(".nonempty");
+      var blocks = line.closest(".nonempty");
       if (blocks.length==0) break; 
-      if (blocks.length==10)
+      if (blocks.length==wellSize.width)
       {
          blocks.each(function() { lineScore += Math.max(0, Object.keys(shapes).indexOf($(this).attr("data-color"))); });
          ctLines++;
@@ -670,7 +675,7 @@ function removeLines()
          {
             var lineAbove = getCell(0, y-1).closest("tr").find("td");                  
   	    var blanks = blocks-lineAbove.closest(".nonempty").length;
-            for(var c=0; c<10; c++) {
+            for(var c=0; c<wellSize.width; c++) {
               if ($(lineAbove[c]).hasClass("nonempty")) {
                  $(line[c]).addClass("nonempty");              
                  $(line[c]).attr("data-color",$(lineAbove[c]).attr("data-color"));              
