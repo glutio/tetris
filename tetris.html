@@ -43,6 +43,7 @@ v *{
   font-size: 20px;
   font-weight:bold;
   color:rgba(40, 40, 40, 0.5);;
+  text-shadow: 1px 1px 6px rgba(50, 50, 50, 0.4);
 }
 
 
@@ -95,6 +96,10 @@ v *{
  .well td.nonempty[data-color="RS"]
  {
    background-color:green;
+ }
+ .well td.nonempty[data-color="DOT"]
+ {
+  background-color:darkmagenta;
  }
  .well td.nonempty[data-color="TAK"]
  {
@@ -302,6 +307,8 @@ RS:[{org:{x:0,y:0}, s:`
 *`},{org:{x:0,y:0}, s:`
 **
  **`}],
+DOT:[{org:{x:0,y:0}, s:`
+*`}],
 TAK:[{org:{x:0,y:0}, s:`
 *** ** * *
  *  ** **
@@ -421,6 +428,7 @@ function initWell() {
    
    var well = $("#well");
    _initWell(well, 10, 20, height);
+   $("#sidebar").css("font-size", Math.max(20, 1.2*height)+"px");
 } 
 
 function initControl()
@@ -564,6 +572,12 @@ function showResetButton()
    $("#again").show();
 }
 
+Number.prototype.pad = function(size) {
+      var s = String(this);
+      while (s.length < (size || 2)) {s = "0" + s;}
+      return s;
+    }
+
 function _getCell(well, x,y)
 {          
    var name = well.find("._"+Number(y)+"_"+Number(x));
@@ -632,7 +646,7 @@ function removeLines()
    if (!lineScore) lineScore = 1;
    if (ctLines==4) lineScore*=2;
    score += lineScore;
-   $("#sidebar").text(score);
+   $("#sidebar").text(score.pad(4));
 }
 
 function _paintShape(well, shape, org, color, show)
@@ -658,7 +672,7 @@ function reset()
     clearInterval(timer);
     $("#well .nonempty").removeClass("nonempty").removeClass("shape");
     score = 0;
-    $("#sidebar").text(score);  
+    $("#sidebar").text(score.pad(4));  
     nextShape();
     releaseShape();
     spd = 800;    
