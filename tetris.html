@@ -6,6 +6,7 @@
   integrity="sha256-hwg4gsxgFZhOsEEamdOYGBf13FyQuiTwlAQgxVSNgt4="
   crossorigin="anonymous"></script>
 <style>
+
 table {
    margin:auto;
    border-spacing: 0px;
@@ -412,6 +413,8 @@ function _initWell(well, x, y, size) {
       {   
         var td = $("<td/>");
         td.addClass("_"+i+"_"+j);
+        td.attr("data-x",j);
+        td.attr("data-y",i);
         tr.append(td);
       }
    }
@@ -477,13 +480,47 @@ function isValidPos(shape, pt)
    if (pt.x<0 || pt.x+shape[0].length>10) return false;
    if (pt.y+shape.length>20) return false;
 
-   for(var y=0; y<shape.length; y++) {
+   for(var y=0; y<shape.length; y++) {                                                                                               
      for(var x=0; x<shape[y].length; x++) {
         var cell = getCell(pt.x+x,pt.y+y);
 	if (shape[y][x]=='*' && cell.hasClass("nonempty") && !cell.hasClass("shape")) return false;
      }
    }
    return true;
+}
+
+function _collapseShape(well)
+{
+   var result = false;
+   var shape = well.find(".shape");
+   shape.sort(function(a,b) {
+          var y1 = Number($(a).attr("data-y"));
+          var y2 = Number($(b).attr("data-y"));
+          return (y1<y2) ? 1 : (y1>y2) ? -1 :0;
+   }); 
+      
+   shape.each(function() {
+       var cell = $(this);
+       if (cell.hasClass("nonempty")) { 
+          var x = Number(cell.attr("data-x"));
+          var y = Number(cell.attr("data-y"));
+          
+          var belowCell = _getCell(well, x, y+1);
+          if (belowCell.length && !$(belowCell).hasClass("nonempty")) {
+	      belowCell.addClass("nonempty").addClass("shape").attr("data-color", cell.attr("data-color")); 
+	      cell.removeClass("nonempty").removeClass("shape").removeAttr("data-color");              
+              result = true;
+          }
+      }
+   });
+   
+   return result;
+}
+
+function collapseShape()
+{
+   var well = $("#well");
+   return _collapseShape(well);
 }
 
 function changeShape()
@@ -530,6 +567,9 @@ function playGame()
 {
     inPlay = true;
     if (!moveShape(0,1)) {                   
+        if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") {
+           if (collapseShape()) return;
+        }
         if (pt.y<0)
         {
            clearInterval(timer);
@@ -554,6 +594,9 @@ function dropShape()
 {
         if (!inPlay) return;
         while(moveShape(0,1));
+        if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H") {
+            while(collapseShape());
+        }
         embedShape();
         removeLines();
     	var oldTimer = timer;
@@ -581,7 +624,7 @@ Number.prototype.pad = function(size) {
 function _getCell(well, x,y)
 {          
    var name = well.find("._"+Number(y)+"_"+Number(x));
-	   var result = $(name);
+   var result = $(name);
    return result;
 }
 
@@ -634,7 +677,7 @@ function removeLines()
               }
               else {                 
                  $(line[c]).removeClass("nonempty"); 
-                 $(line[c]).attr("data-color","");              
+                 $(line[c]).removeAttr("data-color");              
               }           
             }
             line=lineAbove;
@@ -673,7 +716,10 @@ function reset()
     $("#well .nonempty").removeClass("nonempty").removeClass("shape");
     score = 0;
     $("#sidebar").text(score.pad(4));  
-    nextShape();
+    nextShape();                          
+    /*shp=Object.keys(shapes).indexOf("TAK");    
+    r = 0;
+    cur = shapes["TAK"][r].s;*/
     releaseShape();
     spd = 800;    
     timer = setInterval(playGame, spd);                                   
