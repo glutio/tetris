@@ -171,18 +171,17 @@ v *{
     margin:auto;
     font-size:150%;
     background: rgba(247, 239, 215, 0.9); 
-    color: darkred;
-    font-weight:bold;
-    
-    text-shadow:3px -4px 7px rgba(199,199,199,1);
-    border: 14px dotted #b5a759;
+    color: rgba(148, 106, 80, 0.9);
+    text-shadow:3px -4px 7px rgba(199,199,199,0.8);
+    border: 1px solid #b5a759;
     text-align:center;
-    font-family:serif;
-    padding:5%;
+    font-family:Serif#;
+    font-weight: bold;
+    box-shadow: 2px -2px 20px 2px rgba(0, 0, 0, 0.46);
 }
 #again div p {
   padding:0;
-  margin:5px;
+  margin:2%px;
   width:100%
 }    
 
@@ -324,7 +323,16 @@ DOT:[{org:{x:0,y:0}, s:`
 TAK:[{org:{x:0,y:0}, s:`
 *** ** * *
  *  ** **
- * * * * *`}],
+ * * * * *`},{org:{x:0,y:0}, s:`
+***
+ *
+ *`},{org:{x:-3,y:0}, s:`
+ **
+ **
+* *`},{org:{x:-7,y:0}, s:`
+* *
+**
+* *`}],
 H:[{org:{x:0,y:-1}, s:`
  * *
  ***
@@ -462,9 +470,9 @@ function initWell() {
    var well = $("#well");
    _initWell(well, wellSize.width, wellSize.height, height);
 
-   $("#sidebar").css("font-size", Math.max(15, 1.2*height)+"px");
-   $("#elapsed").css("font-size", Math.max(15, 0.8*height)+"px");
-   $("#again").css("font-size", Math.max(15, height)+"px");
+   $("#sidebar").css("font-size", Math.max(7, 1.2*height)+"px");
+   $("#elapsed").css("font-size", Math.max(7, 0.8*height)+"px");
+   $("#again").css("font-size", Math.max(7, 0.8*height)+"px");
 } 
 
 function initControl()
@@ -668,7 +676,7 @@ function dropShape()
 function showResetButton()
 {
    var time = $("#elapsed").text();  
-   $("#again div").html("<p>Score ... <b>"+score+" pts</b></p><p>Time ... <b>"+time+"</b></p><p>Try Again!</>");
+   $("#again div").html("<p>Score <b>"+score+" pts</b></p><p>Time <b>"+time+"</b></p><p>* Try Again! *</>");
    $("#again").show();
 }
 
