@@ -396,6 +396,7 @@ function nextShape()
    do {
      nextShp = getRandomInt(0, Object.keys(shapes).length);
      nextR = getRandomInt(0, shapes[Object.keys(shapes)[nextShp]].length);
+     if (Object.keys(shapes)[nextShp]=="TAK") nextR = 0;
      nextCur = shapes[Object.keys(shapes)[nextShp]][nextR].s;
      if ((Object.keys(shapes)[nextShp]=="TAK" || Object.keys(shapes)[nextShp]=="H")) {
         if (!isAlmostEmpty) continue;
@@ -511,6 +512,8 @@ function rotateShape()
    var key = Object.keys(shapes)[shp];
    for(var i=1; i<shapes[key].length; i++) {
       var newR=(r+i)%shapes[key].length;
+      if (Object.keys(shapes)[shp]=="TAK" && newR == 0) newR = 1;
+
       var newCur=shapes[key][newR].s;
       var org=shapes[key][newR].org;
       if (isValidPos(newCur, { x: pt.x-org.x, y:pt.y-org.y })) {
