@@ -264,6 +264,7 @@ var spd = 800;
 var timer;
 var score = 0;
 var shapes = {
+
 B:[{org:{x:0,y:0}, s:`
 **
 **`}],
@@ -506,6 +507,7 @@ function initControl()
 
 function rotateShape()
 {
+   if (isCollapsing) return;
    var key = Object.keys(shapes)[shp];
    for(var i=1; i<shapes[key].length; i++) {
       var newR=(r+i)%shapes[key].length;
@@ -535,6 +537,7 @@ function isValidPos(shape, pt)
    return true;
 }
 
+var isCollapsing = false;
 function _collapseShape(well)
 {
    var result = false;
@@ -559,7 +562,7 @@ function _collapseShape(well)
           }
       }
    });
-   
+   isCollapsing = result;   
    return result;
 }
 
@@ -596,7 +599,7 @@ $("#well").keydown(function(event) {
 	   }
            case "ArrowDown": {
 		event.preventDefault();
-                playGame();    
+                playGame();
                 break;
 	   }
            case "Space": {    
@@ -710,6 +713,7 @@ function embedShape()
 
 function moveShape(dx,dy)
 {
+   if (isCollapsing) return false;
    var key = Object.keys(shapes)[shp];
    var org = shapes[key][r].org;
    if (!isValidPos(cur, { x: (pt.x+dx)-org.x, y: (pt.y+dy)-org.y })) return false;
