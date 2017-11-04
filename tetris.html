@@ -148,6 +148,7 @@ v *{
   border-spacing:15px;
   margin:auto;
   text-align:center;
+  opacity:.6;
 } 
 
 #control td {
@@ -832,7 +833,7 @@ nextShape();
 paintShape(true);
 reset();
 setInterval(function() {
-    spd=Math.max(0,spd-10);
+    spd=Math.max(300,spd-10);
 }, 10000);
 </script>
 
