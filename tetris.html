@@ -382,6 +382,8 @@ function getRandomInt(min, max) {
 
 function nextShape()
 {
+   takMoved = false;
+
    var paintShp = nextShp;
    var paintCur = nextCur;
 
@@ -506,17 +508,26 @@ function initControl()
 
 }
 
+function getOrigin(respectOrigin, key, r)
+{
+   if (!respectOrigin) return { x:pt.x, y:pt.y };
+   var key = Object.keys(shapes)[shp];
+   var org=shapes[key][r].org; 
+   return { x: pt.x-org.x, y:pt.y-org.y };
+}
+
 function rotateShape()
 {
    if (isCollapsing) return;
    var key = Object.keys(shapes)[shp];
    for(var i=1; i<shapes[key].length; i++) {
       var newR=(r+i)%shapes[key].length;
-      if (Object.keys(shapes)[shp]=="TAK" && newR == 0) newR = 1;
-
+      if (key=="TAK" && newR == 0) {
+         newR = 1;
+      }
       var newCur=shapes[key][newR].s;
-      var org=shapes[key][newR].org;
-      if (isValidPos(newCur, { x: pt.x-org.x, y:pt.y-org.y })) {
+      var org=getOrigin(!takMoved, key, newR);
+      if (isValidPos(newCur, org)) {
          paintShape(false);
          cur=newCur;   
          r=newR;
@@ -653,11 +664,6 @@ function showElapsedTime (startTime) {
     }, 1000);
 }
 
-function checkTime(i) {
-    if (i < 10) {i = "0" + i};  // add zero in front of numbers < 10
-    return i;
-}
-
 function releaseShape()
 {
     var key = Object.keys(shapes)[shp];
@@ -714,15 +720,20 @@ function embedShape()
     $("#well .shape").removeClass("shape");
 }
 
+var takMoved = false;
 function moveShape(dx,dy)
 {
    if (isCollapsing) return false;
    var key = Object.keys(shapes)[shp];
-   var org = shapes[key][r].org;
-   if (!isValidPos(cur, { x: (pt.x+dx)-org.x, y: (pt.y+dy)-org.y })) return false;
+   var ptOrg = getOrigin(!takMoved, key, r);
+   if (!isValidPos(cur, { x: ptOrg.x+dx, y: ptOrg.y+dy })) return false;
    paintShape(false);
    pt.x+=dx;
    pt.y+=dy;
+   if (!takMoved) {
+       takMoved = (key=="TAK" && dx !=0 )
+       pt = getOrigin(takMoved, key, r);
+   }
    paintShape(true);
    return true;
 }
@@ -787,8 +798,8 @@ function _paintShape(well, shape, org, color, show)
 function paintShape(on)
 {
    var key = Object.keys(shapes)[shp];
-   var org = shapes[key][r].org;
-   _paintShape($("#well"), cur, { x: pt.x-org.x, y:pt.y-org.y }, key, on);
+   var org = getOrigin(!takMoved, key, r);
+   _paintShape($("#well"), cur, org, key, on);
 }
 
 function reset()
@@ -800,9 +811,9 @@ function reset()
     score = 0;
     $("#sidebar").text(score.pad(4));  
     nextShape();                          
-    /*shp=Object.keys(shapes).indexOf("TAK");    
+    shp=Object.keys(shapes).indexOf("TAK");    
     r = 0;
-    cur = shapes["TAK"][r].s;*/
+    cur = shapes["TAK"][r].s;
     releaseShape();
     spd = 1000;        
     timer = setInterval(playGame, spd);                                   
