@@ -811,9 +811,11 @@ function reset()
     score = 0;
     $("#sidebar").text(score.pad(4));  
     nextShape();                          
+    /*
     shp=Object.keys(shapes).indexOf("TAK");    
     r = 0;
     cur = shapes["TAK"][r].s;
+    */
     releaseShape();
     spd = 1000;        
     timer = setInterval(playGame, spd);                                   
