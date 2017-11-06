@@ -499,7 +499,6 @@ function nextShape()
      break;
    } while (true); 
 
-   var org = shapes[Object.keys(shapes)[paintShp]][paintR].org;
    var height = $("#well ._0_0").height();
    _initWell(nextWell, paintCur[0].length, paintCur.length, height);
    _paintShape(nextWell, paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
@@ -731,7 +730,8 @@ function restShape() {
     }
     embedShape();
     removeLines();
-    if (pt.y<=0)
+    var org = shapes[Object.keys(shapes)[shp]][r].org;
+    if ((pt.y-org.y)<=0)
     {
        inPlay = false;
        clearInterval(timer);
