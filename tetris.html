@@ -721,14 +721,6 @@ function playGame()
         if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H" || Object.keys(shapes)[shp]=="THAI") {
            if (collapseShape()) return;
         }
-        if (pt.y<0)
-        {
-           clearInterval(timer);
-           inPlay = false;
-           showResetButton();
-           inPlay = false;
-           return;
-        }
         restShape();
     };                
 }
@@ -739,6 +731,14 @@ function restShape() {
     }
     embedShape();
     removeLines();
+    if (pt.y<=0)
+    {
+       inPlay = false;
+       clearInterval(timer);
+       inPlay = false;
+       showResetButton();
+       return;
+    }
     var oldTimer = timer;
     timer = setInterval(playGame, spd);
     clearInterval(oldTimer);
