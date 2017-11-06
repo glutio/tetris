@@ -699,7 +699,7 @@ $("#well").keydown(function(event) {
 	   }
            case "ArrowDown": {
                 event.preventDefault();
-                playGame();
+                if (inPlay) playGame();
                 break;
 	   }
            case "Space": {    
