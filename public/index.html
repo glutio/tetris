@@ -75,6 +75,7 @@ class Q {
    hasClass(c) { return Array.prototype.some.call(this, el => el.classList.contains(c)); }
    addClass(c) { return this.each(function() { this.classList.add(c); }); }
    removeClass(c) { return this.each(function() { this.classList.remove(c); }); }
+   toggleClass(c, on) { return this.each(function() { this.classList.toggle(c, on); }); }
    attr(name, value) {
       if (value === undefined) return this[0] && this[0].hasAttribute(name) ? this[0].getAttribute(name) : undefined;
       return this.each(function() { this.setAttribute(name, value); });
@@ -547,6 +548,10 @@ table {
   font-weight: normal;
   color: #c9801a;
   text-shadow: 0 2px 0 #f8d62d, 0 4px 10px rgba(0, 0, 0, .2);
+}
+/* letters with a tail below the line (ฎ ฏ ฐ ญ) need room so it doesn't run into the name */
+#letter .glyph.tail {
+  padding-bottom: .28em;
 }
 #letter .name {
   display: block;
@@ -1876,7 +1881,7 @@ class ThaiLetter {
       if (i === undefined) i = Math.floor(Math.random() * all.length);
       ThaiLetter.index = i = (i + all.length) % all.length;
       var pick = all[i];
-      $("#letter .glyph").text(pick[0]);
+      $("#letter .glyph").text(pick[0]).toggleClass("tail", /[ฎฏฐญ]/.test(pick[0]));
       $("#letter .name").html(pick[1] + " <i>– " + pick[2] + "</i>");
    }
 
