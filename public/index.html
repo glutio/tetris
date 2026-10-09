@@ -1618,8 +1618,8 @@ class BestScore {
 BestScore.key = "gotetris.best";
 
 var game = new Game();
-// keyboard-only devices don't need the on-screen buttons
-Game.desktopButtons = false;
+// on-screen buttons everywhere, also on keyboard-only devices (set false to hide them there)
+Game.desktopButtons = true;
 Game.lockDelay = 500;      // ms a landed piece can still move
 Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
