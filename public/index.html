@@ -430,9 +430,13 @@ table {
     position:fixed;
     inset: 0;
     z-index: 50;
-    padding-top: 22vh;
+    /* the board sits in the middle of whatever space there is, and its text shrinks on short screens */
+    flex-direction: column;
+    box-sizing: border-box;
+    padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
+    overflow: hidden;
     text-align:center;
-    font-size: calc(var(--cell) * .8);
+    font-size: min(calc(var(--cell) * .8), 3.4vh);
     background: rgba(245, 245, 248, .35);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
@@ -514,10 +518,31 @@ table {
 }
 
 /* pause: a Thai letter to learn */
+#letter {
+  margin: -.5em 0 .2em;
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  cursor: grab;
+}
+#letter .row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: .6em;
+}
+#letter .prev,
+#letter .next {
+  font-size: 160%;
+  opacity: .45;
+  padding: 0 .3em;
+  cursor: pointer;
+}
 #letter .glyph {
   display: block;
+  min-width: 1.2em;
   font-size: 330%;
-  line-height: 1.15;
+  line-height: 1;
   font-family: "Noto Serif Thai", "Leelawadee UI", Tahoma, serif;
   font-weight: normal;
   color: #c9801a;
@@ -696,7 +721,7 @@ table {
   <div id="paused">
     <div class="board">
       <p>PAUSED</p>
-      <p id="letter"><span class="glyph" lang="th"></span><span class="name"></span></p>
+      <p id="letter"><span class="row"><span class="prev" role="button" aria-label="Previous letter">‹</span><span class="glyph" lang="th"></span><span class="next" role="button" aria-label="Next letter">›</span></span><span class="name"></span></p>
       <p>tap to play</p>
       <p><button id="install" type="button">Install app</button></p>
       <p id="ios-install" class="hint">Play full screen: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b></p>
@@ -1267,7 +1292,7 @@ class Game {
          this.showElapsedTime();
          this.well.el.focus();
       }
-      if (p) $("#paused").show(); else $("#paused").hide();
+      if (p) $("#paused").css("display", "flex"); else $("#paused").hide();
       $("#pause").attr("class", p ? "btn on" : "btn");
    }
 
@@ -1499,7 +1524,7 @@ class Game {
          + "<p>Time <b>"+time+"</b></p><p>TRY AGAIN!</p>");
       this.showBest();
       this.overAt = Date.now();
-      $("#again").show();
+      $("#again").css("display", "flex");
    }
 
    showBest()
@@ -1835,32 +1860,53 @@ class BestScore {
 }
 BestScore.key = "gotetris.best";
 
-// pause screen: a random letter of the Thai alphabet, its name and meaning
+// pause screen: a random letter of the Thai alphabet, its name and meaning;
+// swipe it (or tap the arrows) to go through the alphabet, round and round
 class ThaiLetter {
-   static show()
+   static show(i)
    {
       var all = ThaiLetter.letters;
-      var pick = all[Math.floor(Math.random() * all.length)];
+      if (i === undefined) i = Math.floor(Math.random() * all.length);
+      ThaiLetter.index = i = (i + all.length) % all.length;
+      var pick = all[i];
       $("#letter .glyph").text(pick[0]);
       $("#letter .name").html(pick[1] + " <i>– " + pick[2] + "</i>");
    }
+
+   static init()
+   {
+      var el = $("#letter")[0], start = null;
+      var step = function(d) { ThaiLetter.show(ThaiLetter.index + d); };
+      el.addEventListener("pointerdown", function(e) { start = e.clientX; });
+      el.addEventListener("pointerup", function(e) {
+         if (start === null) return;
+         var dx = e.clientX - start;
+         start = null;
+         if (Math.abs(dx) > 25) step(dx < 0 ? 1 : -1);
+      });
+      // taps and swipes on the letter don't resume the game
+      el.addEventListener("click", function(e) { e.stopPropagation(); });
+      $("#letter .prev").on("click", function() { step(-1); });
+      $("#letter .next").on("click", function() { step(1); });
+   }
 }
+// names with tone marks: à low, â falling, á high, ǎ rising, no mark = mid
 ThaiLetter.letters = [
-   ["ก", "gor gai", "chicken"], ["ข", "khor khai", "egg"], ["ฃ", "khor khuat", "bottle"],
-   ["ค", "khor khwai", "buffalo"], ["ฅ", "khor khon", "person"], ["ฆ", "khor rakhang", "bell"],
-   ["ง", "ngor ngu", "snake"], ["จ", "jor jan", "plate"], ["ฉ", "chor ching", "cymbals"],
-   ["ช", "chor chang", "elephant"], ["ซ", "sor so", "chain"], ["ฌ", "chor choe", "tree"],
-   ["ญ", "yor ying", "woman"], ["ฎ", "dor chada", "dancer's headdress"], ["ฏ", "tor patak", "spear"],
-   ["ฐ", "thor than", "pedestal"], ["ฑ", "thor montho", "Montho, the giant's wife"], ["ฒ", "thor phuthao", "old man"],
-   ["ณ", "nor nen", "young monk"], ["ด", "dor dek", "child"], ["ต", "tor tao", "turtle"],
-   ["ถ", "thor thung", "sack"], ["ท", "thor thahan", "soldier"], ["ธ", "thor thong", "flag"],
-   ["น", "nor nu", "mouse"], ["บ", "bor baimai", "leaf"], ["ป", "por pla", "fish"],
-   ["ผ", "phor phueng", "bee"], ["ฝ", "for fa", "lid"], ["พ", "phor phan", "tray"],
-   ["ฟ", "for fan", "teeth"], ["ภ", "phor samphao", "sailboat"], ["ม", "mor ma", "horse"],
-   ["ย", "yor yak", "giant"], ["ร", "ror ruea", "boat"], ["ล", "lor ling", "monkey"],
-   ["ว", "wor waen", "ring"], ["ศ", "sor sala", "pavilion"], ["ษ", "sor ruesi", "hermit"],
-   ["ส", "sor suea", "tiger"], ["ห", "hor hip", "chest"], ["ฬ", "lor chula", "kite"],
-   ["อ", "or ang", "basin"], ["ฮ", "hor nokhuk", "owl"]
+   ["ก", "gor gài", "chicken"], ["ข", "khǒr khài", "egg"], ["ฃ", "khǒr khùat", "bottle"],
+   ["ค", "khor khwaai", "buffalo"], ["ฅ", "khor khon", "person"], ["ฆ", "khor rá-khang", "bell"],
+   ["ง", "ngor nguu", "snake"], ["จ", "jor jaan", "plate"], ["ฉ", "chǒr chìng", "cymbals"],
+   ["ช", "chor cháang", "elephant"], ["ซ", "sor sôo", "chain"], ["ฌ", "chor choe", "tree"],
+   ["ญ", "yor yǐng", "woman"], ["ฎ", "dor chá-daa", "dancer's headdress"], ["ฏ", "dtor bpà-dtàk", "spear"],
+   ["ฐ", "thǒr thǎan", "pedestal"], ["ฑ", "thor mon-thoo", "Montho, the giant's wife"], ["ฒ", "thor phûu-thâo", "old man"],
+   ["ณ", "nor neen", "young monk"], ["ด", "dor dèk", "child"], ["ต", "dtor dtào", "turtle"],
+   ["ถ", "thǒr thǔng", "sack"], ["ท", "thor thá-hǎan", "soldier"], ["ธ", "thor thong", "flag"],
+   ["น", "nor nǔu", "mouse"], ["บ", "bor bai-máai", "leaf"], ["ป", "bpor bplaa", "fish"],
+   ["ผ", "phǒr phûeng", "bee"], ["ฝ", "fǒr fǎa", "lid"], ["พ", "phor phaan", "tray"],
+   ["ฟ", "for fan", "teeth"], ["ภ", "phor sǎm-phao", "sailboat"], ["ม", "mor máa", "horse"],
+   ["ย", "yor yák", "giant"], ["ร", "ror ruea", "boat"], ["ล", "lor ling", "monkey"],
+   ["ว", "wor wǎen", "ring"], ["ศ", "sǒr sǎa-laa", "pavilion"], ["ษ", "sǒr rue-sǐi", "hermit"],
+   ["ส", "sǒr sǔea", "tiger"], ["ห", "hǒr hìip", "chest"], ["ฬ", "lor jù-laa", "kite"],
+   ["อ", "or àang", "basin"], ["ฮ", "hor nók-hûuk", "owl"]
 ];
 
 // home screen app: offline cache (service worker) and an install button/hint on the pause board
@@ -1903,6 +1949,7 @@ Game.showButtons = (function() { try { return localStorage.getItem("gotetris.but
 Game.lockDelay = 500;      // ms a landed piece can still move
 Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
+ThaiLetter.init();
 InstallApp.init();
 </script>
 
