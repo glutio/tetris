@@ -123,7 +123,7 @@ function $(what) {
 :root {
   --cell: 24px;
   --btn: 64px;
-  --bevel: max(1px, calc(var(--cell) * .1));
+  --bevel: max(1px, calc(var(--cell) * .07));
 }
 
 html, body {
@@ -193,7 +193,7 @@ table {
   padding: calc(var(--cell) * .2);
   border-radius: calc(var(--cell) * .35);
   background: linear-gradient(160deg, #ffffff, #dcdce2);
-  box-shadow: 0 calc(var(--cell) * .4) calc(var(--cell) * 1.2) rgba(0, 0, 0, .18),
+  box-shadow: 0 calc(var(--cell) * .25) calc(var(--cell) * .8) rgba(0, 0, 0, .12),
               inset 0 0 0 1px rgba(255, 255, 255, .8);
 }
 
@@ -242,7 +242,7 @@ table {
 
 #next-well .shape
 {
-  box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.5);
+  box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.3);
   opacity:0.55;
 }
 
@@ -260,7 +260,7 @@ table {
   font-size: calc(var(--cell) * 1.2);
   font-weight:bold;
   color:rgba(40, 40, 40, 0.5);
-  text-shadow: 1px 1px 6px rgba(50, 50, 50, 0.4);
+  text-shadow: 1px 1px 4px rgba(50, 50, 50, 0.25);
   pointer-events: none;
 }
 #game.lefty #elapsed,
@@ -285,7 +285,7 @@ table {
 .well td.nonempty {
     --c: green;
     background-color: var(--c);
-    background-image: linear-gradient(135deg, rgba(255,255,255,.55) 0%, rgba(255,255,255,.15) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.18) 100%);
+    background-image: linear-gradient(135deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.1) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.12) 100%);
     border: var(--bevel) outset var(--c);
     border-radius: calc(var(--cell) * .14);
 }
@@ -335,11 +335,11 @@ table {
   position: relative;
   z-index: 1;
   border-style: solid;
-  border-color: rgba(255,255,255,.6) rgba(120,60,0,.35) rgba(120,60,0,.45) rgba(255,255,255,.45);
+  border-color: rgba(255,255,255,.45) rgba(120,60,0,.25) rgba(120,60,0,.32) rgba(255,255,255,.32);
   background-origin: border-box;
   background-repeat: no-repeat;
   background-image:
-    linear-gradient(135deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,.12) 100%),
+    linear-gradient(135deg, rgba(255,255,255,.3) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,.08) 100%),
     repeating-linear-gradient(115deg,
       #b89a2a var(--tak),
       #d4b12e calc(var(--tak) + var(--cell) * .8),
@@ -428,13 +428,13 @@ table {
     font-size:150%;
     background: rgba(247, 239, 215, 0.92);
     color: rgba(148, 106, 80, 0.9);
-    text-shadow:3px -4px 7px rgba(199,199,199,0.8);
+    text-shadow:2px -2px 5px rgba(199,199,199,0.6);
     border: calc(var(--cell) * .5) dotted #b5a759;
     border-radius: calc(var(--cell) * .6);
     text-align:center;
     font-family:serif;
     font-weight: bold;
-    box-shadow: 2px -2px 20px 2px rgba(0, 0, 0, 0.46);
+    box-shadow: 2px -2px 14px 1px rgba(0, 0, 0, 0.3);
     cursor: pointer;
     animation: pop .45s cubic-bezier(.2, 1.6, .4, 1);
 }
@@ -475,9 +475,9 @@ table {
   background-position: center;
   background-repeat: no-repeat;
   background-size: 52% 52%;
-  box-shadow: 0 calc(var(--btn) * .06) calc(var(--btn) * .16) rgba(0, 0, 0, .2),
-              inset 0 calc(var(--btn) * .04) 0 rgba(255, 255, 255, .9),
-              inset 0 calc(var(--btn) * -.06) 0 rgba(0, 0, 0, .1);
+  box-shadow: 0 calc(var(--btn) * .04) calc(var(--btn) * .11) rgba(0, 0, 0, .14),
+              inset 0 calc(var(--btn) * .03) 0 rgba(255, 255, 255, .65),
+              inset 0 calc(var(--btn) * -.04) 0 rgba(0, 0, 0, .06);
   opacity: .85;
   cursor: pointer;
   transition: transform .08s ease, box-shadow .08s ease, opacity .08s;
