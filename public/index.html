@@ -191,13 +191,13 @@ table {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: calc(var(--btn) * .5);
+  gap: calc(var(--btn) * .3);
   touch-action: none;
 }
 
 #game.portrait {
   flex-direction: column;
-  gap: calc(var(--btn) * .15);
+  gap: calc(var(--btn) * .05);
 }
 
 /* landscape: well centered, dock in the side column (right, or left when the device is upside down) */
@@ -513,6 +513,25 @@ table {
   color: deeppink;
 }
 
+/* pause: a Thai letter to learn */
+#letter .glyph {
+  display: block;
+  font-size: 330%;
+  line-height: 1.15;
+  font-family: "Noto Serif Thai", "Leelawadee UI", Tahoma, serif;
+  font-weight: normal;
+  color: #c9801a;
+  text-shadow: 0 2px 0 #f8d62d, 0 4px 10px rgba(0, 0, 0, .2);
+}
+#letter .name {
+  display: block;
+  font-size: 60%;
+  font-family: system-ui, sans-serif;
+}
+#letter .name i {
+  font-weight: normal;
+}
+
 #install,
 #ios-install {
   display: none;
@@ -544,7 +563,7 @@ table {
 }
 
 #control {
-  border-spacing: calc(var(--btn) * .22);
+  border-spacing: calc(var(--btn) * .1);
   margin:auto;
 }
 
@@ -608,12 +627,46 @@ table {
   -webkit-touch-callout: none;
 }
 
-/* no touch screen: keyboard only, the buttons are not needed */
-#game.no-touch #dock {
+/* buttons switched off (the default): gestures and keys only, a small pause icon in the corner */
+#game.no-buttons #dock {
   visibility: hidden;
 }
-#game.portrait.no-touch #dock {
+#game.portrait.no-buttons #dock {
   display: none;
+}
+
+#pause-corner {
+  display: none;
+  position: fixed;
+  z-index: 40;
+  top: max(6px, env(safe-area-inset-top));
+  left: max(6px, env(safe-area-inset-left));
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: rgba(250, 250, 252, .92) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23484850' stroke-width='4.5' stroke-linecap='round'%3E%3Cpath d='M13 15H35M13 24H35M13 33H35'/%3E%3C/svg%3E") center / 58% no-repeat;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, .2), inset 0 -2px 0 rgba(0, 0, 0, .06);
+  cursor: pointer;
+  touch-action: none;
+  transition: transform .08s ease;
+}
+#pause-corner.pressed {
+  transform: scale(.9);
+}
+#game.no-buttons ~ #pause-corner {
+  display: block;
+}
+
+#buttons-toggle {
+  font: inherit;
+  font-size: 50%;
+  font-family: system-ui, sans-serif;
+  color: inherit;
+  background: rgba(255, 255, 255, .6);
+  border: 2px solid currentColor;
+  border-radius: 2em;
+  padding: .2em 1em;
+  cursor: pointer;
 }
 </style>
 </head>
@@ -642,14 +695,17 @@ table {
   </div>
   <div id="paused">
     <div class="board">
-      <p>PAUSED</p><p>tap to play</p>
+      <p>PAUSED</p>
+      <p id="letter"><span class="glyph" lang="th"></span><span class="name"></span></p>
+      <p>tap to play</p>
       <p><button id="install" type="button">Install app</button></p>
       <p id="ios-install" class="hint">Play full screen: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b></p>
-      <section class="help">
+      <p><button id="buttons-toggle" type="button">Show buttons</button></p>
+      <section class="help sr-only">
         <h2>How to play</h2>
         <p>Fit the falling blocks into full rows to clear them. Watch out for the special Thai letter, heart and TAK pieces – they crumble like sand when they land.</p>
         <ul>
-          <li><b>Touch:</b> tap to move down, drag to move, swipe up to rotate, flick down to drop</li>
+          <li><b>Touch:</b> tap to rotate, drag to move, drag down to speed up, flick down to drop</li>
           <li><b>Keyboard:</b> ← → move, ↑ rotate, ↓ down, Space drop, P pause</li>
         </ul>
       </section>
@@ -670,6 +726,7 @@ table {
     </table>
   </div>
 </div>
+<div id="pause-corner" role="button" aria-label="Menu (pause)"></div>
 
 <script>
 var shapes = {
@@ -1198,6 +1255,7 @@ class Game {
       this.paused = p;
       if (p) {
          this.pausedAt = new Date().getTime();
+         ThaiLetter.show();
          clearInterval(this.timer);
          clearTimeout(this.elapsedTimer);
          clearTimeout(this.lockTimer);
@@ -1245,21 +1303,20 @@ class Game {
    {
       var w = window.innerWidth, h = window.innerHeight;
       var portrait = h >= w;
-      var touch = window.matchMedia("(any-pointer: coarse)").matches;
-      var buttons = touch || Game.desktopButtons;
-      var btn = Math.round(Math.min(84, Math.max(44, Math.min(w/6, h/11))));
+      var buttons = Game.showButtons;
+      var btn = Math.round(Math.min(110, Math.max(48, Math.min(w/4.6, h/9))));
       // like the original: cell = available height / 20 rows (and width / 10 columns);
       // 16px = page padding 4 + well margin 2 + well border 2, on both sides
-      var roomH = h - 16 - (portrait && buttons ? btn*2.6 : 0);
+      var roomH = h - 16 - (portrait && buttons ? btn*2.45 : 0);
       var size = Math.floor(Math.min(roomH/20, (w-16)/10));
       if (!portrait && buttons) {
          // landscape: the well takes the full height, the buttons fit the column beside it
-         // (centered well => each side column needs ~4.4 buttons); shrink the well only if
+         // (centered well => each side column needs ~4.1 buttons); shrink the well only if
          // the buttons would get too small
-         btn = Math.min(84, h/7, (w - 16 - size*10.5) / 8.8);
-         if (btn < 44) {
-            btn = 44;
-            size = Math.floor((w - 16 - btn*8.8) / 10.5);
+         btn = Math.min(110, h/5, (w - 16 - size*10.5) / 8.2);
+         if (btn < 48) {
+            btn = 48;
+            size = Math.floor((w - 16 - btn*8.2) / 10.5);
          }
          btn = Math.round(btn);
       }
@@ -1271,7 +1328,7 @@ class Game {
       // upside-down landscape puts the buttons on the left
       var type = screen.orientation ? screen.orientation.type : "";
       var lefty = type == "landscape-secondary" || (!type && window.orientation == -90);
-      $("#game").attr("class", (portrait ? "portrait" : lefty ? "landscape lefty" : "landscape") + (buttons ? "" : " no-touch"));
+      $("#game").attr("class", (portrait ? "portrait" : lefty ? "landscape lefty" : "landscape") + (buttons ? "" : " no-buttons"));
       this.cellSize = size;
    }
 
@@ -1441,6 +1498,7 @@ class Game {
          + (isBest ? "<p class=\"best\">NEW BEST!</p>" : "<p>Best <b>"+best+" pts</b></p>")
          + "<p>Time <b>"+time+"</b></p><p>TRY AGAIN!</p>");
       this.showBest();
+      this.overAt = Date.now();
       $("#again").show();
    }
 
@@ -1593,8 +1651,22 @@ class Controls {
       this.initButton("#rotate", function() { game.rotateShape(); });
       this.initButton("#drop", function() { game.dropShape(); });
       this.initButton("#pause", function() { game.setPaused(!game.paused); });
+      this.initButton("#pause-corner", function() { game.setPaused(!game.paused); });
 
-      $("#scoreboard").click(function() { game.reset(); });
+      var toggle = $("#buttons-toggle");
+      var label = function() { toggle.text(Game.showButtons ? "Hide buttons" : "Show buttons"); };
+      label();
+      toggle.on("click", function(e) {
+         e.stopPropagation();
+         Game.showButtons = !Game.showButtons;
+         try { localStorage.setItem("gotetris.buttons", Game.showButtons ? "1" : "0"); } catch (err) {}
+         label();
+         game.fitWell();
+      });
+
+      // tap anywhere on the game over screen to play again (not by a tap that was already
+      // on its way when the game ended)
+      $("#again").click(function() { if (Date.now() - game.overAt > 400) game.reset(); });
       $("#paused").click(function() { game.setPaused(false); });
       document.addEventListener("visibilitychange", function() {
          if (document.hidden) game.setPaused(true);
@@ -1643,47 +1715,50 @@ class Controls {
       wrap.addEventListener("pointerdown", function(event) {
          if (event.button > 0 || $("#again").is(":visible")) return;
          s = { id: event.pointerId, x: event.clientX, y: event.clientY, t: event.timeStamp,
-               axis: null, mx: 0, my: 0, rotated: false, track: [{ y: event.clientY, t: event.timeStamp }] };
+               moved: false, mx: 0, my: 0, rotated: false,
+               track: [{ x: event.clientX, y: event.clientY, t: event.timeStamp }] };
          if (wrap.setPointerCapture) wrap.setPointerCapture(event.pointerId);
       });
 
+      // one finger steers freely: sideways moves a column per cell, down pulls the piece down
+      // (moving back up and down again keeps pulling), swipe up rotates once
       wrap.addEventListener("pointermove", function(event) {
          if (!s || event.pointerId != s.id) return;
          var cell = game.cellSize;
          var dx = event.clientX - s.x, dy = event.clientY - s.y;
-         s.track.push({ y: event.clientY, t: event.timeStamp });
+         s.track.push({ x: event.clientX, y: event.clientY, t: event.timeStamp });
          while (s.track.length > 2 && event.timeStamp - s.track[0].t > 100) s.track.shift();
 
-         if (!s.axis && Math.hypot(dx, dy) > cell * .5)
-            s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+         if (!s.moved && Math.hypot(dx, dy) > cell * .5) s.moved = true;
+         if (!s.moved) return;
 
-         if (s.axis == "x") {
-            var n = Math.trunc(dx / (cell * .9));
-            while (s.mx < n && game.moveShape(1,0)) s.mx++;
-            while (s.mx > n && game.moveShape(-1,0)) s.mx--;
-            s.mx = n;
+         var n = Math.trunc(dx / (cell * .9));
+         while (s.mx < n && game.moveShape(1,0)) s.mx++;
+         while (s.mx > n && game.moveShape(-1,0)) s.mx--;
+         s.mx = n;
+
+         if (dy < -cell * 1.2 && !s.rotated) {
+            s.rotated = true;
+            game.rotateShape();
          }
-         else if (s.axis == "y") {
-            if (dy < -cell * 1.2 && !s.rotated) {
-               s.rotated = true;
-               game.rotateShape();
-            }
-            var m = Math.trunc(dy / cell);
-            while (s.my < m) { s.my++; game.moveShape(0,1); }
-         }
+         var m = Math.trunc(dy / cell);
+         if (m < s.my) s.my = m;
+         while (s.my < m) { s.my++; game.moveShape(0,1); }
       });
 
       wrap.addEventListener("pointerup", function(event) {
          if (!s || event.pointerId != s.id) return;
          var cell = game.cellSize;
          var dy = event.clientY - s.y;
-         if (!s.axis) {
-            if (event.timeStamp - s.t < 500) game.moveShape(0,1);
+         if (!s.moved) {
+            if (event.timeStamp - s.t < 500) game.rotateShape();
          }
-         else if (s.axis == "y" && dy > cell) {
+         else if (dy > cell) {
+            // a quick, mostly downward flick at the end drops the piece
             var first = s.track[0];
-            var speed = (event.clientY - first.y) / Math.max(1, event.timeStamp - first.t);
-            if (speed > Controls.flickSpeed) game.dropShape();
+            var vy = event.clientY - first.y, vx = event.clientX - first.x;
+            var speed = vy / Math.max(1, event.timeStamp - first.t);
+            if (speed > Controls.flickSpeed && vy > Math.abs(vx) * 1.5) game.dropShape();
          }
          s = null;
       });
@@ -1760,6 +1835,34 @@ class BestScore {
 }
 BestScore.key = "gotetris.best";
 
+// pause screen: a random letter of the Thai alphabet, its name and meaning
+class ThaiLetter {
+   static show()
+   {
+      var all = ThaiLetter.letters;
+      var pick = all[Math.floor(Math.random() * all.length)];
+      $("#letter .glyph").text(pick[0]);
+      $("#letter .name").html(pick[1] + " <i>– " + pick[2] + "</i>");
+   }
+}
+ThaiLetter.letters = [
+   ["ก", "gor gai", "chicken"], ["ข", "khor khai", "egg"], ["ฃ", "khor khuat", "bottle"],
+   ["ค", "khor khwai", "buffalo"], ["ฅ", "khor khon", "person"], ["ฆ", "khor rakhang", "bell"],
+   ["ง", "ngor ngu", "snake"], ["จ", "jor jan", "plate"], ["ฉ", "chor ching", "cymbals"],
+   ["ช", "chor chang", "elephant"], ["ซ", "sor so", "chain"], ["ฌ", "chor choe", "tree"],
+   ["ญ", "yor ying", "woman"], ["ฎ", "dor chada", "dancer's headdress"], ["ฏ", "tor patak", "spear"],
+   ["ฐ", "thor than", "pedestal"], ["ฑ", "thor montho", "Montho, the giant's wife"], ["ฒ", "thor phuthao", "old man"],
+   ["ณ", "nor nen", "young monk"], ["ด", "dor dek", "child"], ["ต", "tor tao", "turtle"],
+   ["ถ", "thor thung", "sack"], ["ท", "thor thahan", "soldier"], ["ธ", "thor thong", "flag"],
+   ["น", "nor nu", "mouse"], ["บ", "bor baimai", "leaf"], ["ป", "por pla", "fish"],
+   ["ผ", "phor phueng", "bee"], ["ฝ", "for fa", "lid"], ["พ", "phor phan", "tray"],
+   ["ฟ", "for fan", "teeth"], ["ภ", "phor samphao", "sailboat"], ["ม", "mor ma", "horse"],
+   ["ย", "yor yak", "giant"], ["ร", "ror ruea", "boat"], ["ล", "lor ling", "monkey"],
+   ["ว", "wor waen", "ring"], ["ศ", "sor sala", "pavilion"], ["ษ", "sor ruesi", "hermit"],
+   ["ส", "sor suea", "tiger"], ["ห", "hor hip", "chest"], ["ฬ", "lor chula", "kite"],
+   ["อ", "or ang", "basin"], ["ฮ", "hor nokhuk", "owl"]
+];
+
 // home screen app: offline cache (service worker) and an install button/hint on the pause board
 class InstallApp {
    static init()
@@ -1795,8 +1898,8 @@ class InstallApp {
 }
 
 var game = new Game();
-// on-screen buttons everywhere, also on keyboard-only devices (set false to hide them there)
-Game.desktopButtons = true;
+// on-screen buttons are off unless the player switches them on (pause screen); remembered
+Game.showButtons = (function() { try { return localStorage.getItem("gotetris.buttons") == "1"; } catch (e) { return false; } })();
 Game.lockDelay = 500;      // ms a landed piece can still move
 Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
