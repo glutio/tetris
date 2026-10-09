@@ -351,12 +351,12 @@ table {
 }
 
 #well {
-  animation: takshine 4.5s linear infinite, heartbeat 1.7s ease-in-out infinite;
+  animation: takshine 6.5s linear infinite, heartbeat 1.7s ease-in-out infinite;
 }
 
 @keyframes takshine {
   from { --tak: 0px; }
-  to   { --tak: calc(var(--cell) * 4); }
+  to   { --tak: calc(var(--cell) * 6); }
 }
 
 @keyframes heartbeat {
@@ -369,13 +369,16 @@ table {
 .well td.nonempty[data-color="TAK"] {
   --c: #ffb400;
   background-image:
+    /* original colors there and back (like its alternate animation), minus its darkest olive
+       #a79019, which looks grey when it is always on screen */
     repeating-linear-gradient(115deg,
-      #a79019 var(--tak),
-      #dfbb03 calc(var(--tak) + var(--cell) * 1),
-      #f8d62d calc(var(--tak) + var(--cell) * 1.8),
-      #ffb400 calc(var(--tak) + var(--cell) * 2.6),
-      #e89a10 calc(var(--tak) + var(--cell) * 3.3),
-      #a79019 calc(var(--tak) + var(--cell) * 4));
+      #dfbb03 var(--tak),
+      #f8d62d calc(var(--tak) + var(--cell) * 1.2),
+      #ffb400 calc(var(--tak) + var(--cell) * 2.2),
+      #e89a10 calc(var(--tak) + var(--cell) * 3),
+      #ffb400 calc(var(--tak) + var(--cell) * 3.8),
+      #f8d62d calc(var(--tak) + var(--cell) * 4.8),
+      #dfbb03 calc(var(--tak) + var(--cell) * 6));
   background-size: calc(var(--cell) * 10) calc(var(--cell) * 20);
   background-position: calc(var(--x) * var(--cell) * -1) calc(var(--y) * var(--cell) * -1);
   background-origin: border-box;
@@ -510,6 +513,26 @@ table {
   color: deeppink;
 }
 
+#install,
+#ios-install {
+  display: none;
+}
+#install {
+  font: inherit;
+  font-size: 70%;
+  color: #fff;
+  background: deeppink;
+  border: 0;
+  border-radius: 2em;
+  padding: .3em 1.1em;
+  cursor: pointer;
+  margin: 0 auto;
+}
+#ios-install {
+  font-size: 55%;
+  font-family: system-ui, sans-serif;
+}
+
 @keyframes pop {
   from { transform: scale(.6); opacity: 0; }
   to   { transform: none; opacity: 1; }
@@ -620,6 +643,8 @@ table {
   <div id="paused">
     <div class="board">
       <p>PAUSED</p><p>tap to play</p>
+      <p><button id="install" type="button">Install app</button></p>
+      <p id="ios-install" class="hint">Play full screen: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b></p>
       <section class="help">
         <h2>How to play</h2>
         <p>Fit the falling blocks into full rows to clear them. Watch out for the special Thai letter, heart and TAK pieces – they crumble like sand when they land.</p>
@@ -1735,12 +1760,47 @@ class BestScore {
 }
 BestScore.key = "gotetris.best";
 
+// home screen app: offline cache (service worker) and an install button/hint on the pause board
+class InstallApp {
+   static init()
+   {
+      if ("serviceWorker" in navigator && window.isSecureContext)
+         navigator.serviceWorker.register("/sw.js").catch(function() {});
+
+      var installed = window.matchMedia("(display-mode: fullscreen), (display-mode: standalone)").matches
+         || navigator.standalone;
+      if (installed) return;
+
+      // Android/desktop Chrome, Edge, Samsung: the browser offers an install prompt we can trigger
+      var prompt = null;
+      window.addEventListener("beforeinstallprompt", function(e) {
+         e.preventDefault();
+         prompt = e;
+         $("#install").show();
+         $("#ios-install").hide();
+      });
+      window.addEventListener("appinstalled", function() { $("#install").hide(); });
+      $("#install").on("click", function(e) {
+         e.stopPropagation();
+         if (!prompt) return;
+         prompt.prompt();
+         prompt.userChoice.then(function() { prompt = null; $("#install").hide(); });
+      });
+
+      // iPhone/iPad have no prompt: explain Share > Add to Home Screen
+      var ios = /iPhone|iPad|iPod/.test(navigator.userAgent)
+         || (navigator.platform == "MacIntel" && navigator.maxTouchPoints > 1);
+      if (ios) $("#ios-install").show();
+   }
+}
+
 var game = new Game();
 // on-screen buttons everywhere, also on keyboard-only devices (set false to hide them there)
 Game.desktopButtons = true;
 Game.lockDelay = 500;      // ms a landed piece can still move
 Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
+InstallApp.init();
 </script>
 
 </body>

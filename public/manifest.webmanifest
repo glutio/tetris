@@ -1,6 +1,7 @@
 {
   "name": "gotetris – Tetris on the go",
   "short_name": "gotetris",
+  "id": "/",
   "description": "Fast, simple Tetris in your browser. Touch and keyboard controls, no download, no sign-up.",
   "start_url": "/",
   "scope": "/",
