@@ -486,6 +486,26 @@ table {
   transform: rotate(40deg) scale(.9);
 }
 
+/* pause is small and out of the way */
+#pause {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23484850' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M18 13V35M30 13V35'/%3E%3C/svg%3E");
+}
+#control td#pause {
+  transform: scale(.62);
+  opacity: .6;
+}
+#control td#pause.pressed {
+  transform: scale(.56);
+}
+
+/* touch gestures on the well */
+#wrap {
+  touch-action: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+}
+
 /* no touch screen: keyboard only, the buttons are not needed */
 #game.no-touch #dock {
   visibility: hidden;
@@ -528,7 +548,7 @@ table {
         <td id="right" class="btn"></td>
       </tr>
       <tr>
-        <td></td>
+        <td id="pause" class="btn"></td>
         <td id="drop" class="btn"></td>
         <td></td>
       </tr>
@@ -861,7 +881,14 @@ class Game {
       this.takMoved = false;
       this.isCollapsing = false;
       this.inPlay = false;
+      this.paused = false;
       this.elapsedTimer = null;
+      this.startTime = 0;
+      this.pausedAt = 0;
+      this.landing = false;      // touched down, waiting to lock
+      this.lockTimer = null;
+      this.lockResets = 0;
+      this.crumbleTimer = null;
       this.well = new Well("#well");
       this.nextWell = new Well("#next-well");
    }
@@ -875,8 +902,75 @@ class Game {
       this.paintShape(true);
       this.reset();
       setInterval(() => {
-          this.spd=Math.max(300,this.spd-10);
+          if (this.inPlay && !this.paused) this.spd=Math.max(300,this.spd-10);
       }, 10000);
+   }
+
+   // lock delay: a landed piece can still slide/rotate for a moment before it locks
+   startLock()
+   {
+      this.landing = true;
+      this.well.el.addClass("landing");
+      clearTimeout(this.lockTimer);
+      this.lockTimer = setTimeout(() => this.lockShape(), Game.lockDelay);
+   }
+
+   clearLock()
+   {
+      this.landing = false;
+      this.lockResets = 0;
+      clearTimeout(this.lockTimer);
+      this.lockTimer = null;
+      this.well.el.removeClass("landing");
+   }
+
+   // called after the player moves/rotates a landed piece
+   touchLock()
+   {
+      if (!this.landing) return;
+      var key = Object.keys(shapes)[this.shp];
+      var org = this.getOrigin(!this.takMoved, key, this.r);
+      if (this.isValidPos(this.cur, { x: org.x, y: org.y+1 })) this.clearLock();
+      else if (++this.lockResets <= Game.maxLockResets) this.startLock();
+   }
+
+   lockShape()
+   {
+      this.clearLock();
+      if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) {
+         // special pieces crumble block by block before they settle
+         clearInterval(this.timer);
+         clearInterval(this.crumbleTimer);
+         this.crumbleTimer = setInterval(() => {
+            if (this.collapseShape()) return;
+            clearInterval(this.crumbleTimer);
+            this.crumbleTimer = null;
+            this.restShape();
+         }, 45);
+         return;
+      }
+      this.restShape();
+   }
+
+   setPaused(p)
+   {
+      if (p == this.paused || (p && !this.inPlay)) return;
+      this.paused = p;
+      if (p) {
+         this.pausedAt = new Date().getTime();
+         clearInterval(this.timer);
+         clearTimeout(this.elapsedTimer);
+         clearTimeout(this.lockTimer);
+      } else {
+         this.startTime += new Date().getTime() - this.pausedAt;
+         clearInterval(this.timer);
+         this.timer = setInterval(() => this.playGame(), this.spd);
+         if (this.landing) this.startLock();
+         this.showElapsedTime();
+         this.well.el.focus();
+      }
+      if (p) $("#paused").show(); else $("#paused").hide();
+      $("#pause").attr("class", p ? "btn on" : "btn");
    }
 
    initWell()
@@ -971,7 +1065,7 @@ class Game {
 
    rotateShape()
    {
-      if (this.isCollapsing) return;
+      if (this.isCollapsing || this.paused) return;
       var key = Object.keys(shapes)[this.shp];
       for(var i=1; i<shapes[key].length; i++) {
          var newR=(this.r+i)%shapes[key].length;
@@ -985,6 +1079,7 @@ class Game {
             this.cur=newCur;
             this.r=newR;
             this.paintShape(true);
+            this.touchLock();
             break;
          }
       }
@@ -1022,12 +1117,10 @@ class Game {
 
    playGame()
    {
+       if (this.paused || this.crumbleTimer) return;
        this.inPlay = true;
        if (!this.moveShape(0,1)) {
-           if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) {
-              if (this.collapseShape()) return;
-           }
-           this.restShape();
+           if (!this.landing) this.startLock();
        };
    }
 
@@ -1043,6 +1136,7 @@ class Game {
        {
           this.inPlay = false;
           clearInterval(this.timer);
+          clearTimeout(this.elapsedTimer);
           this.showResetButton();
           return;
        }
@@ -1062,11 +1156,17 @@ class Game {
        this.pt.y=-this.cur.length;
    }
 
+   // drop slides the piece to the bottom; it still locks after the lock delay unless
+   // dropped again
    dropShape()
    {
-       if (!this.inPlay) return;
+       if (!this.inPlay || this.paused || this.crumbleTimer) return;
+       if (this.landing) {
+          this.lockShape();
+          return;
+       }
        while(this.moveShape(0,1));
-       this.restShape();
+       this.startLock();
    }
 
    embedShape()
@@ -1077,13 +1177,25 @@ class Game {
    showResetButton()
    {
       var time = $("#elapsed").text();
-      $("#scoreboard").html("<p>Score <b>"+this.score+" pts</b></p><p>Time <b>"+time+"</b></p><p>TRY AGAIN!</p>");
+      var best = BestScore.get();
+      var isBest = BestScore.save(this.score);
+      $("#scoreboard").html("<p>Score <b>"+this.score+" pts</b></p>"
+         + (isBest ? "<p class=\"best\">NEW BEST!</p>" : "<p>Best <b>"+best+" pts</b></p>")
+         + "<p>Time <b>"+time+"</b></p><p>TRY AGAIN!</p>");
+      this.showBest();
       $("#again").show();
    }
 
-   showElapsedTime(startTime)
+   showBest()
    {
-       if (!this.inPlay) return;
+      var best = BestScore.get();
+      $("#best").text(best ? "BEST " + best.pad(4) : "");
+   }
+
+   showElapsedTime()
+   {
+       if (!this.inPlay || this.paused) return;
+       var startTime = this.startTime;
        var today = new Date().getTime();
        var h = Math.floor((today-startTime) / (1000*60*60));
        var m = Math.floor((today-startTime) / (1000*60)) % 60;
@@ -1092,7 +1204,7 @@ class Game {
        $("#elapsed").text((h ? h + ":" + m.pad(2) : m) + ":" + s.pad(2));
 
        this.elapsedTimer = setTimeout(() => {
-          this.showElapsedTime(startTime)
+          this.showElapsedTime()
        }, 1000);
    }
 
@@ -1103,7 +1215,7 @@ class Game {
 
    moveShape(dx,dy)
    {
-      if (this.isCollapsing) return false;
+      if (this.isCollapsing || this.paused) return false;
       var key = Object.keys(shapes)[this.shp];
       var ptOrg = this.getOrigin(!this.takMoved, key, this.r);
       if (!this.isValidPos(this.cur, { x: ptOrg.x+dx, y: ptOrg.y+dy })) return false;
@@ -1115,6 +1227,7 @@ class Game {
           this.pt = this.getOrigin(this.takMoved, key, this.r);
       }
       this.paintShape(true);
+      if (dx) this.touchLock();
       return true;
    }
 
@@ -1175,6 +1288,16 @@ class Game {
        $("#again").hide();
        clearInterval(this.timer);
        clearTimeout(this.elapsedTimer);
+       clearInterval(this.crumbleTimer);
+       this.crumbleTimer = null;
+       this.isCollapsing = false;
+       this.clearLock();
+       if (this.paused) {
+          this.paused = false;
+          $("#paused").hide();
+          $("#pause").attr("class", "btn");
+       }
+       this.showBest();
        this.well.el.find(".nonempty").removeClass("nonempty").removeClass("shape");
        this.score = 0;
        $("#sidebar").text(this.score.pad(4));
@@ -1188,30 +1311,116 @@ class Game {
        this.spd = 1000;
        this.timer = setInterval(() => this.playGame(), this.spd);
        this.inPlay = true;
-       this.showElapsedTime(new Date().getTime());
+       this.startTime = new Date().getTime();
+       this.showElapsedTime();
        this.well.el.focus();
    }
 }
 
-// Keyboard and on-screen buttons.
+// Keyboard, on-screen buttons and touch gestures on the well.
 class Controls {
    constructor(game)
    {
       this.game = game;
       this.initControl();
       this.initKeys();
+      this.initTouch();
    }
 
    initControl()
    {
       var game = this.game;
-      $("#left").click(function() { game.moveShape(-1,0); });
-      $("#right").click(function() { game.moveShape(1,0); });
-      $("#rotate").click(function() { game.rotateShape(); });
-      $("#drop").click(function() { game.dropShape(); });
-      $("#well").click(function() { game.moveShape(0,1); });
+      this.initButton("#left", function() { game.moveShape(-1,0); }, true);
+      this.initButton("#right", function() { game.moveShape(1,0); }, true);
+      this.initButton("#rotate", function() { game.rotateShape(); });
+      this.initButton("#drop", function() { game.dropShape(); });
+      this.initButton("#pause", function() { game.setPaused(!game.paused); });
 
       $("#scoreboard").click(function() { game.reset(); });
+      $("#paused").click(function() { game.setPaused(false); });
+      document.addEventListener("visibilitychange", function() {
+         if (document.hidden) game.setPaused(true);
+      });
+   }
+
+   // buttons act on press (no click delay); left/right repeat while held
+   initButton(selector, action, repeat)
+   {
+      var el = $(selector)[0];
+      var timer = null;
+      var stop = function() {
+         clearTimeout(timer);
+         clearInterval(timer);
+         timer = null;
+         el.classList.remove("pressed");
+      };
+      el.addEventListener("pointerdown", function(event) {
+         event.preventDefault();
+         if (el.setPointerCapture) el.setPointerCapture(event.pointerId);
+         el.classList.add("pressed");
+         action();
+         if (repeat) timer = setTimeout(function() { timer = setInterval(action, Controls.repeatRate); }, Controls.repeatDelay);
+      });
+      ["pointerup", "pointercancel", "lostpointercapture"].forEach(function(type) { el.addEventListener(type, stop); });
+   }
+
+   // on the well: tap = down one row, drag sideways = move, drag down = soft drop,
+   // swipe up = rotate, flick down = drop
+   initTouch()
+   {
+      var game = this.game;
+      var wrap = $("#wrap")[0];
+      var s = null;
+
+      wrap.addEventListener("pointerdown", function(event) {
+         if (event.button > 0 || $("#again").is(":visible")) return;
+         s = { id: event.pointerId, x: event.clientX, y: event.clientY, t: event.timeStamp,
+               axis: null, mx: 0, my: 0, rotated: false, track: [{ y: event.clientY, t: event.timeStamp }] };
+         if (wrap.setPointerCapture) wrap.setPointerCapture(event.pointerId);
+      });
+
+      wrap.addEventListener("pointermove", function(event) {
+         if (!s || event.pointerId != s.id) return;
+         var cell = game.cellSize;
+         var dx = event.clientX - s.x, dy = event.clientY - s.y;
+         s.track.push({ y: event.clientY, t: event.timeStamp });
+         while (s.track.length > 2 && event.timeStamp - s.track[0].t > 100) s.track.shift();
+
+         if (!s.axis && Math.hypot(dx, dy) > cell * .5)
+            s.axis = Math.abs(dx) > Math.abs(dy) ? "x" : "y";
+
+         if (s.axis == "x") {
+            var n = Math.trunc(dx / (cell * .9));
+            while (s.mx < n && game.moveShape(1,0)) s.mx++;
+            while (s.mx > n && game.moveShape(-1,0)) s.mx--;
+            s.mx = n;
+         }
+         else if (s.axis == "y") {
+            if (dy < -cell * 1.2 && !s.rotated) {
+               s.rotated = true;
+               game.rotateShape();
+            }
+            var m = Math.trunc(dy / cell);
+            while (s.my < m) { s.my++; game.moveShape(0,1); }
+         }
+      });
+
+      wrap.addEventListener("pointerup", function(event) {
+         if (!s || event.pointerId != s.id) return;
+         var cell = game.cellSize;
+         var dy = event.clientY - s.y;
+         if (!s.axis) {
+            if (event.timeStamp - s.t < 500) game.moveShape(0,1);
+         }
+         else if (s.axis == "y" && dy > cell) {
+            var first = s.track[0];
+            var speed = (event.clientY - first.y) / Math.max(1, event.timeStamp - first.t);
+            if (speed > Controls.flickSpeed) game.dropShape();
+         }
+         s = null;
+      });
+
+      wrap.addEventListener("pointercancel", function() { s = null; });
    }
 
    initKeys()
@@ -1240,11 +1449,20 @@ class Controls {
             }
             case "Space": {
                event.preventDefault();
+               if (event.originalEvent.repeat) break;
                if (!game.inPlay) {
                   game.reset();
+               } else if (game.paused) {
+                  game.setPaused(false);
                } else {
                   game.dropShape();
                }
+               break;
+            }
+            case "KeyP":
+            case "Escape": {
+               event.preventDefault();
+               game.setPaused(!game.paused);
                break;
             }
          }
@@ -1252,9 +1470,33 @@ class Controls {
    }
 }
 
+Controls.repeatDelay = 170;   // ms before a held button starts repeating
+Controls.repeatRate = 55;     // ms between repeats
+Controls.flickSpeed = .9;     // px/ms downward to count as a flick (drop)
+
+// best score kept in the browser
+class BestScore {
+   static get()
+   {
+      try { return Number(localStorage.getItem(BestScore.key)) || 0; }
+      catch (e) { return 0; }
+   }
+
+   // returns true when score is a new best
+   static save(score)
+   {
+      if (score <= BestScore.get()) return false;
+      try { localStorage.setItem(BestScore.key, score); } catch (e) {}
+      return true;
+   }
+}
+BestScore.key = "gotetris.best";
+
 var game = new Game();
 // keyboard-only devices don't need the on-screen buttons; left on for now while debugging
 Game.desktopButtons = true;
+Game.lockDelay = 500;      // ms a landed piece can still move
+Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
 </script>
 
