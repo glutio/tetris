@@ -337,7 +337,11 @@ table {
 
 .well td.nonempty[data-color="H"] {
   --c: deeppink;
+  position: relative;
+  z-index: 1;
   filter: brightness(var(--beat));
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .28),
+    0 0 calc(var(--cell) * (var(--beat) - .97) * 5) rgba(255, 20, 147, .7);
 }
 
 /* a piece that has landed but not locked yet */
