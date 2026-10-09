@@ -315,7 +315,7 @@ table {
 }
 
 #well {
-  animation: takshine 2.4s linear infinite, heartbeat 1.3s ease-in-out infinite;
+  animation: takshine 4.5s linear infinite, heartbeat 1.3s ease-in-out infinite;
 }
 
 @keyframes takshine {
@@ -341,16 +341,16 @@ table {
   background-image:
     linear-gradient(135deg, rgba(255,255,255,.45) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,.12) 100%),
     repeating-linear-gradient(115deg,
-      #a79019 var(--tak),
-      #dfbb03 calc(var(--tak) + var(--cell) * .8),
-      #f8d62d calc(var(--tak) + var(--cell) * 1.5),
-      #fffbe6 calc(var(--tak) + var(--cell) * 1.9),
-      #ffb400 calc(var(--tak) + var(--cell) * 2.5),
-      #ff6c00 calc(var(--tak) + var(--cell) * 3.3),
-      #a79019 calc(var(--tak) + var(--cell) * 4));
+      #b89a2a var(--tak),
+      #d4b12e calc(var(--tak) + var(--cell) * .8),
+      #e6c548 calc(var(--tak) + var(--cell) * 1.5),
+      #f1dc8e calc(var(--tak) + var(--cell) * 1.9),
+      #e2b53c calc(var(--tak) + var(--cell) * 2.5),
+      #cf9a2e calc(var(--tak) + var(--cell) * 3.3),
+      #b89a2a calc(var(--tak) + var(--cell) * 4));
   background-size: 100% 100%, calc(var(--cell) * 10) calc(var(--cell) * 20);
   background-position: 0 0, calc(var(--x) * var(--cell) * -1) calc(var(--y) * var(--cell) * -1);
-  box-shadow: 0 0 calc(var(--cell) * .45) rgba(255, 170, 0, .7);
+  box-shadow: 0 0 calc(var(--cell) * .25) rgba(230, 170, 30, .35);
 }
 
 .well td.nonempty[data-color="H"] {
