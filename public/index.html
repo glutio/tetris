@@ -314,9 +314,9 @@ table {
 
 @keyframes heartbeat {
   0%, 60%, 100% { --beat: 1; }
-  12% { --beat: 1.14; }
-  24% { --beat: 1.02; }
-  36% { --beat: 1.11; }
+  12% { --beat: 1.1; }
+  24% { --beat: 1.015; }
+  36% { --beat: 1.08; }
 }
 
 .well td.nonempty[data-color="TAK"] {
@@ -341,7 +341,7 @@ table {
   z-index: 1;
   filter: brightness(var(--beat));
   box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .28),
-    0 0 calc(var(--cell) * (var(--beat) - .97) * 3.5) calc(var(--cell) * (var(--beat) - 1) * .5) rgba(255, 20, 147, .8);
+    0 0 calc(var(--cell) * (var(--beat) - .97) * 3.5) calc(var(--cell) * (var(--beat) - 1) * .5) rgba(255, 20, 147, .65);
 }
 
 /* a piece that has landed but not locked yet (crumbling pieces keep going, so no highlight) */
