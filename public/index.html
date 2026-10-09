@@ -344,8 +344,8 @@ table {
     0 0 calc(var(--cell) * (var(--beat) - .97) * 3.5) calc(var(--cell) * (var(--beat) - 1) * .5) rgba(255, 20, 147, .8);
 }
 
-/* a piece that has landed but not locked yet */
-#well.landing td.shape {
+/* a piece that has landed but not locked yet (crumbling pieces keep going, so no highlight) */
+#well.landing td.shape:not([data-color="TAK"]):not([data-color="H"]):not([data-color="THAI"]) {
   filter: brightness(1.2);
 }
 
