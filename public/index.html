@@ -912,10 +912,21 @@ class Game {
       var portrait = h >= w;
       var touch = window.matchMedia("(any-pointer: coarse)").matches || navigator.maxTouchPoints > 0;
       var buttons = touch || Game.desktopButtons;
-      var btn = Math.round(Math.min(84, Math.max(44, portrait ? Math.min(w/6, h/11) : Math.min(h/7, w/12))));
+      var btn = Math.round(Math.min(84, Math.max(44, Math.min(w/6, h/11))));
       var roomH = h - 24 - (portrait && buttons ? btn*2.7 : 0);
-      var roomW = w - 24 - (portrait ? 0 : btn*8.2);
-      var size = Math.max(8, Math.floor(Math.min(roomH/20.5, roomW/10.5)));
+      var size = Math.floor(Math.min(roomH/20.5, (w-24)/10.5));
+      if (!portrait && buttons) {
+         // landscape: the well takes the full height, the buttons fit the column beside it
+         // (centered well => each side column needs ~4.4 buttons); shrink the well only if
+         // the buttons would get too small
+         btn = Math.min(84, h/7, (w - 16 - size*10.5) / 8.8);
+         if (btn < 44) {
+            btn = 44;
+            size = Math.floor((w - 16 - btn*8.8) / 10.5);
+         }
+         btn = Math.round(btn);
+      }
+      size = Math.max(8, size);
       var root = document.documentElement.style;
       root.setProperty("--cell", size + "px");
       root.setProperty("--btn", btn + "px");
