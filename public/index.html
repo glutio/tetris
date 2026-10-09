@@ -270,6 +270,22 @@ table {
   font-size: calc(var(--cell) * .8);
 }
 
+/* when there is room, score and time sit outside the well, opposite the preview */
+#wrap.stats-out #sidebar,
+#wrap.stats-out #best,
+#wrap.stats-out #elapsed {
+  right: auto;
+  left: calc(100% + var(--cell) * .8);
+  text-align: left;
+}
+#wrap.stats-out.flip #sidebar,
+#wrap.stats-out.flip #best,
+#wrap.stats-out.flip #elapsed {
+  left: auto;
+  right: calc(100% + var(--cell) * .8);
+  text-align: right;
+}
+
 /* blocks: same colors as always, now with a bevel and a little shine */
 .well td.nonempty {
     --c: green;
@@ -379,12 +395,12 @@ table {
 #again,
 #paused {
     display:none;
-    position:absolute;
+    position:fixed;
     inset: 0;
-    padding-top: 30%;
+    z-index: 50;
+    padding-top: 22vh;
     text-align:center;
     font-size: calc(var(--cell) * .8);
-    border-radius: inherit;
     background: rgba(255, 240, 244, .3);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
@@ -406,7 +422,8 @@ table {
 
 #scoreboard,
 .board {
-    width: 80%;
+    box-sizing: border-box;
+    width: min(94vw, 560px);
     margin:auto;
     padding: .2em .4em;
     font-size:150%;
@@ -519,12 +536,12 @@ table {
     <div id="sidebar"></div>
     <div id="best"></div>
     <div id="elapsed"></div>
-    <div id="again">
-      <div id="scoreboard"></div>
-    </div>
-    <div id="paused">
-      <div class="board"><p>PAUSED</p><p>tap to play</p></div>
-    </div>
+  </div>
+  <div id="again">
+    <div id="scoreboard"></div>
+  </div>
+  <div id="paused">
+    <div class="board"><p>PAUSED</p><p>tap to play</p></div>
   </div>
   <div id="dock">
     <table id="control">
@@ -916,17 +933,19 @@ class Game {
       this.placeNext();
    }
 
-   // put the preview next to the well (away from the buttons) if it fits, otherwise over it
+   // put the preview next to the well (away from the buttons) and the score/time on the
+   // other side, each only if it fits, otherwise over the well
    placeNext()
    {
-      var wrap = $("#wrap").removeClass("beside").removeClass("flip");
+      var wrap = $("#wrap").removeClass("beside").removeClass("stats-out").removeClass("flip");
       var rect = wrap[0].getBoundingClientRect();
-      var free = this.lefty ? window.innerWidth - rect.right : rect.left;
-      var need = this.nextWell.el.width() + this.cellSize * 1.4;
-      if (free >= need) {
-         wrap.addClass("beside");
-         if (this.lefty) wrap.addClass("flip");
-      }
+      var gap = this.cellSize * 1.4;
+      var previewFree = this.lefty ? window.innerWidth - rect.right : rect.left;
+      var statsFree = this.lefty ? rect.left : window.innerWidth - rect.right;
+      var statsWidth = Math.max($("#sidebar").width(), $("#elapsed").width(), $("#best").width());
+      if (previewFree >= this.nextWell.el.width() + gap) wrap.addClass("beside");
+      if (statsFree >= statsWidth + gap) wrap.addClass("stats-out");
+      if (this.lefty) wrap.addClass("flip");
    }
 
    nextShape()
