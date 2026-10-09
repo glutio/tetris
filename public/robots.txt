@@ -1,0 +1,5 @@
+User-agent: *
+Allow: /
+Disallow: /original.html
+
+Sitemap: https://gotetris.com/sitemap.xml
