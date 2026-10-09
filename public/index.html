@@ -315,7 +315,7 @@ table {
 }
 
 #well {
-  animation: takshine 4.5s linear infinite, heartbeat 1.3s ease-in-out infinite;
+  animation: takshine 4.5s linear infinite, heartbeat 1.7s ease-in-out infinite;
 }
 
 @keyframes takshine {
@@ -325,9 +325,9 @@ table {
 
 @keyframes heartbeat {
   0%, 60%, 100% { --beat: 1; }
-  12% { --beat: 1.35; }
-  24% { --beat: 1.05; }
-  36% { --beat: 1.3; }
+  12% { --beat: 1.14; }
+  24% { --beat: 1.02; }
+  36% { --beat: 1.11; }
 }
 
 .well td.nonempty[data-color="TAK"] {
@@ -358,7 +358,7 @@ table {
   position: relative;
   z-index: 1;
   filter: brightness(var(--beat));
-  box-shadow: 0 0 calc(var(--cell) * (var(--beat) - .9)) rgba(255, 20, 147, .8);
+  box-shadow: 0 0 calc(var(--cell) * (var(--beat) - .95) * 2) rgba(255, 20, 147, .45);
 }
 
 /* a piece that has landed but not locked yet */
