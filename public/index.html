@@ -217,12 +217,31 @@ table {
   position: absolute;
   left: 4%;
   top: 3%;
+  width: max-content;
+}
+
+#next-well td {
+  min-width: var(--cell);
 }
 
 #next-well .shape
 {
   box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.5);
   opacity:0.5;
+}
+
+/* when there is room, the preview sits outside the well instead of over it */
+#wrap.beside #next-well {
+  left: auto;
+  right: calc(100% + var(--cell) * .8);
+  top: 0;
+}
+#wrap.beside.flip #next-well {
+  right: auto;
+  left: calc(100% + var(--cell) * .8);
+}
+#wrap.beside #next-well .shape {
+  opacity: 1;
 }
 
 #elapsed,
@@ -892,7 +911,22 @@ class Game {
       var type = screen.orientation ? screen.orientation.type : "";
       var lefty = type == "landscape-secondary" || (!type && window.orientation == -90);
       $("#game").attr("class", portrait ? "portrait" : lefty ? "landscape lefty" : "landscape");
+      this.lefty = !portrait && lefty;
       this.cellSize = size;
+      this.placeNext();
+   }
+
+   // put the preview next to the well (away from the buttons) if it fits, otherwise over it
+   placeNext()
+   {
+      var wrap = $("#wrap").removeClass("beside").removeClass("flip");
+      var rect = wrap[0].getBoundingClientRect();
+      var free = this.lefty ? window.innerWidth - rect.right : rect.left;
+      var need = this.nextWell.el.width() + this.cellSize * 1.4;
+      if (free >= need) {
+         wrap.addClass("beside");
+         if (this.lefty) wrap.addClass("flip");
+      }
    }
 
    nextShape()
@@ -931,6 +965,7 @@ class Game {
       } while (true);
 
       this.nextWell.init(paintCur[0].length, paintCur.length);
+      if (this.cellSize) this.placeNext();
       this.nextWell.paintShape(paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
    }
 
