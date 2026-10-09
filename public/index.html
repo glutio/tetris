@@ -6,7 +6,7 @@
 <meta name="description" content="Play gotetris free in your browser: a fast, simple Tetris for phones, tablets and desktop. Touch and keyboard controls, no download, no sign-up – with special Thai letter, heart and TAK pieces.">
 <meta name="robots" content="index, follow, max-image-preview:large">
 <link rel="canonical" href="https://gotetris.com/">
-<meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#f4f4f6">
 <meta name="application-name" content="gotetris">
 <meta name="apple-mobile-web-app-title" content="gotetris">
@@ -160,6 +160,12 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+  /* no double-tap/pinch zoom, and ignore the browser's text size setting */
+  touch-action: none;
+  -webkit-text-size-adjust: none;
+  -moz-text-size-adjust: none;
+  text-size-adjust: none;
+  font-size: 16px;
 }
 
 body {
@@ -180,7 +186,8 @@ table {
 #game {
   height: 100%;
   box-sizing: border-box;
-  padding: 8px;
+  padding: 4px;
+  padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1145,7 +1152,7 @@ class Game {
    lockShape()
    {
       this.clearLock();
-      if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) {
+      if (Shapes.isSpecial(Object.keys(shapes)[this.shp]) && !this.dropped) {
          // special pieces crumble block by block before they settle
          clearInterval(this.timer);
          clearInterval(this.crumbleTimer);
@@ -1185,9 +1192,27 @@ class Game {
    {
       this.well.init(this.wellSize.width, this.wellSize.height);
       this.fitWell();
-      $(window).on("resize", () => this.fitWell());
-      $(window).on("orientationchange", () => this.fitWell());
-      if (screen.orientation) screen.orientation.addEventListener("change", () => this.fitWell());
+      // mobile browsers report the new size late (or not at all) after a rotation or a
+      // zoom/text-size change, so listen to everything and re-check a few times
+      var refit = () => {
+         this.fitWell();
+         requestAnimationFrame(() => this.fitWell());
+         clearTimeout(this.refitTimer);
+         this.refitTimer = setTimeout(() => this.fitWell(), 300);
+         setTimeout(() => this.fitWell(), 800);
+      };
+      window.addEventListener("resize", refit);
+      window.addEventListener("orientationchange", refit);
+      window.addEventListener("pageshow", refit);
+      if (window.visualViewport) visualViewport.addEventListener("resize", refit);
+      if (screen.orientation) screen.orientation.addEventListener("change", refit);
+      if (window.ResizeObserver) new ResizeObserver(() => this.fitWell()).observe(document.documentElement);
+      // last resort: some zoom changes fire no event at all
+      var lastKey = "";
+      setInterval(() => {
+         var key = window.innerWidth + "x" + window.innerHeight + "@" + window.devicePixelRatio;
+         if (key != lastKey) { lastKey = key; this.fitWell(); }
+      }, 500);
    }
 
    // sizes cells and buttons to the screen; the dock goes below (portrait) or beside the well
@@ -1198,8 +1223,10 @@ class Game {
       var touch = window.matchMedia("(any-pointer: coarse)").matches;
       var buttons = touch || Game.desktopButtons;
       var btn = Math.round(Math.min(84, Math.max(44, Math.min(w/6, h/11))));
-      var roomH = h - 24 - (portrait && buttons ? btn*2.7 : 0);
-      var size = Math.floor(Math.min(roomH/20.5, (w-24)/10.5));
+      // like the original: cell = available height / 20 rows (and width / 10 columns);
+      // 16px = page padding 4 + well margin 2 + well border 2, on both sides
+      var roomH = h - 16 - (portrait && buttons ? btn*2.6 : 0);
+      var size = Math.floor(Math.min(roomH/20, (w-16)/10));
       if (!portrait && buttons) {
          // landscape: the well takes the full height, the buttons fit the column beside it
          // (centered well => each side column needs ~4.4 buttons); shrink the well only if
@@ -1360,21 +1387,19 @@ class Game {
    {
        var key = Object.keys(shapes)[this.shp];
        var org = shapes[key][this.r].org;
+       this.dropped = false;
        this.pt.x=Math.floor((this.wellSize.width-this.cur[0].length) / 2)+org.x;
        this.pt.y=-this.cur.length;
    }
 
-   // drop slides the piece to the bottom; it still locks after the lock delay unless
-   // dropped again
+   // drop slides the piece to the bottom and locks it right away (special pieces settle
+   // at once instead of crumbling block by block)
    dropShape()
    {
        if (!this.inPlay || this.paused || this.crumbleTimer) return;
-       if (this.landing) {
-          this.lockShape();
-          return;
-       }
+       this.dropped = true;
        while(this.moveShape(0,1));
-       this.startLock();
+       this.lockShape();
    }
 
    embedShape()
@@ -1548,6 +1573,16 @@ class Controls {
       $("#paused").click(function() { game.setPaused(false); });
       document.addEventListener("visibilitychange", function() {
          if (document.hidden) game.setPaused(true);
+      });
+
+      // iOS ignores user-scalable=no: block double-tap and pinch zoom ourselves
+      var lastTouch = 0;
+      document.addEventListener("touchend", function(e) {
+         if (e.timeStamp - lastTouch < 350) e.preventDefault();
+         lastTouch = e.timeStamp;
+      }, { passive: false });
+      ["gesturestart", "gesturechange", "dblclick"].forEach(function(type) {
+         document.addEventListener(type, function(e) { e.preventDefault(); }, { passive: false });
       });
    }
 
