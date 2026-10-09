@@ -394,7 +394,7 @@ table {
     0 0 calc(var(--cell) * (var(--beat) - .97) * 3.5) calc(var(--cell) * (var(--beat) - 1) * .5) rgba(255, 20, 147, .65);
 }
 
-/* a piece that has landed but not locked yet (crumbling pieces keep going, so no highlight) */
+/* a dropped piece in its grace period, before it locks (special pieces settle at once, so no highlight) */
 #well.landing td.shape:not([data-color="TAK"]):not([data-color="H"]):not([data-color="THAI"]) {
   filter: brightness(1.2);
 }
@@ -1461,8 +1461,9 @@ class Game {
    {
        if (this.paused || this.crumbleTimer) return;
        this.inPlay = true;
+       // a falling piece locks on the tick after it lands; a dropped one waits out its grace period
        if (!this.moveShape(0,1)) {
-           if (!this.landing) this.startLock();
+           if (!this.landing) this.lockShape();
        };
    }
 
@@ -1499,14 +1500,16 @@ class Game {
        this.pt.y=-this.cur.length;
    }
 
-   // drop slides the piece to the bottom and locks it right away (special pieces settle
-   // at once instead of crumbling block by block)
+   // drop slides the piece to the bottom, where it can still slide/rotate for a moment;
+   // dropping again locks it at once (special pieces settle right away instead of crumbling)
    dropShape()
    {
        if (!this.inPlay || this.paused || this.crumbleTimer) return;
+       if (this.landing) { this.lockShape(); return; }
        this.dropped = true;
        while(this.moveShape(0,1));
-       this.lockShape();
+       if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) this.lockShape();
+       else this.startLock();
    }
 
    embedShape()
@@ -1800,11 +1803,15 @@ class Controls {
          {
             case "ArrowRight": {
                event.preventDefault();
-               game.moveShape(1,0);break;
+               if (game.paused) ThaiLetter.show(ThaiLetter.index + 1);
+               else game.moveShape(1,0);
+               break;
             }
             case "ArrowLeft": {
                event.preventDefault();
-               game.moveShape(-1,0);break;
+               if (game.paused) ThaiLetter.show(ThaiLetter.index - 1);
+               else game.moveShape(-1,0);
+               break;
             }
             case "ArrowUp": {
                event.preventDefault();
