@@ -262,11 +262,12 @@ table {
 }
 
 #next-well {
+  --cell: var(--ncell);   /* the preview is drawn at 2/3 size */
   --w: calc(var(--next-w, 4) * var(--cell));
   --pos: min(4%, max(calc(-1 * (var(--w) + var(--gap))), calc(-1 * var(--free))));
   position: absolute;
   left: var(--pos);
-  top: calc(var(--cell) * 2);
+  top: calc(3% + var(--ncell) * .45);   /* level with the top of the score digits */
   width: max-content;
 }
 #game.lefty #next-well {
@@ -281,7 +282,7 @@ table {
 #next-well .shape
 {
   box-shadow: 1px 1px 1px 0px rgba(0, 0, 0, 0.3);
-  opacity:0.55;
+  opacity:0.4;
 }
 
 #elapsed,
@@ -1353,6 +1354,7 @@ class Game {
       size = Math.max(8, size);
       var root = document.documentElement.style;
       root.setProperty("--cell", size + "px");
+      root.setProperty("--ncell", Math.round(size * 2 / 3) + "px");
       root.setProperty("--btn", btn + "px");
 
       // upside-down landscape puts the buttons on the left
