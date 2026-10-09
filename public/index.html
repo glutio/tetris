@@ -7,15 +7,6 @@
 <meta name="viewport" content="width=device-width, height=device-height, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
 <meta name="theme-color" content="#f4f4f6">
 <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='-0.1 -0.6 3.2 3.2'%3E%3Cg fill='%23f8d62d' stroke='%23a79019' stroke-width='.1'%3E%3Crect width='1' height='1'/%3E%3Crect x='1' width='1' height='1'/%3E%3Crect x='2' width='1' height='1'/%3E%3Crect x='1' y='1' width='1' height='1'/%3E%3C/g%3E%3C/svg%3E">
-<!-- Global site tag (gtag.js) - Google Analytics -->
-<script async src="https://www.googletagmanager.com/gtag/js?id=UA-109204557-1"></script>
-<script>
-  window.dataLayer = window.dataLayer || [];
-  function gtag(){dataLayer.push(arguments);}
-  gtag('js', new Date());
-
-  gtag('config', 'UA-109204557-1');
-</script>
 <script>
 // A tiny stand-in for the handful of jQuery calls gotetris uses.
 class Q {
@@ -123,7 +114,6 @@ function $(what) {
 :root {
   --cell: 24px;
   --btn: 64px;
-  --bevel: max(1px, calc(var(--cell) * .07));
 }
 
 html, body {
@@ -190,11 +180,11 @@ table {
 
 #wrap {
   position: relative;
-  padding: calc(var(--cell) * .2);
-  border-radius: calc(var(--cell) * .35);
-  background: linear-gradient(160deg, #ffffff, #dcdce2);
-  box-shadow: 0 calc(var(--cell) * .25) calc(var(--cell) * .8) rgba(0, 0, 0, .12),
-              inset 0 0 0 1px rgba(255, 255, 255, .8);
+  padding: calc(var(--cell) * .12);
+  border-radius: calc(var(--cell) * .15);
+  background: #fff;
+  border: 1px solid rgba(0, 0, 0, .18);
+  box-shadow: 0 2px calc(var(--cell) * .5) rgba(0, 0, 0, .08);
 }
 
 #well {
@@ -209,8 +199,8 @@ table {
 }
 
 .tetris td {
-    background: radial-gradient(circle at 30% 30%, #ffe9ee, #ffd6de);
-    border: 1px solid rgba(120, 70, 85, .25);
+    background-color: #ffdae1;
+    border: 1px solid rgba(60, 20, 30, .32);
 }
 
 /*
@@ -281,13 +271,12 @@ table {
   font-size: calc(var(--cell) * .8);
 }
 
-/* blocks: same colors as always, now with a bevel and a little shine */
+/* blocks: the original flat colors with a thin edge */
 .well td.nonempty {
     --c: green;
     background-color: var(--c);
-    background-image: linear-gradient(135deg, rgba(255,255,255,.38) 0%, rgba(255,255,255,.1) 40%, rgba(0,0,0,0) 60%, rgba(0,0,0,.12) 100%);
-    border: var(--bevel) outset var(--c);
-    border-radius: calc(var(--cell) * .14);
+    border: 1px solid rgba(0, 0, 0, .55);
+    box-shadow: inset 1px 1px 0 rgba(255, 255, 255, .28);
 }
 
 .well td.nonempty.shape { --c: blue; }
@@ -301,7 +290,7 @@ table {
 .well td.nonempty[data-color="DOT"] { --c: darkmagenta; }
 .well td.nonempty[data-color="THAI"] { --c: rgb(209, 153, 81); }
 
-/* TAK: one sheet of gold foil across the whole piece with a light sweeping over it */
+/* TAK: the original gold-to-orange colors as one sheet sweeping across the whole piece */
 @property --tak {
   syntax: "<length>";
   inherits: true;
@@ -332,33 +321,23 @@ table {
 
 .well td.nonempty[data-color="TAK"] {
   --c: #ffb400;
-  position: relative;
-  z-index: 1;
-  border-style: solid;
-  border-color: rgba(255,255,255,.45) rgba(120,60,0,.25) rgba(120,60,0,.32) rgba(255,255,255,.32);
+  background-image:
+    repeating-linear-gradient(115deg,
+      #a79019 var(--tak),
+      #dfbb03 calc(var(--tak) + var(--cell) * 1),
+      #f8d62d calc(var(--tak) + var(--cell) * 1.8),
+      #ffb400 calc(var(--tak) + var(--cell) * 2.6),
+      #ff6c00 calc(var(--tak) + var(--cell) * 3.3),
+      #a79019 calc(var(--tak) + var(--cell) * 4));
+  background-size: calc(var(--cell) * 10) calc(var(--cell) * 20);
+  background-position: calc(var(--x) * var(--cell) * -1) calc(var(--y) * var(--cell) * -1);
   background-origin: border-box;
   background-repeat: no-repeat;
-  background-image:
-    linear-gradient(135deg, rgba(255,255,255,.3) 0%, rgba(255,255,255,0) 45%, rgba(0,0,0,.08) 100%),
-    repeating-linear-gradient(115deg,
-      #b89a2a var(--tak),
-      #d4b12e calc(var(--tak) + var(--cell) * .8),
-      #e6c548 calc(var(--tak) + var(--cell) * 1.5),
-      #f1dc8e calc(var(--tak) + var(--cell) * 1.9),
-      #e2b53c calc(var(--tak) + var(--cell) * 2.5),
-      #cf9a2e calc(var(--tak) + var(--cell) * 3.3),
-      #b89a2a calc(var(--tak) + var(--cell) * 4));
-  background-size: 100% 100%, calc(var(--cell) * 10) calc(var(--cell) * 20);
-  background-position: 0 0, calc(var(--x) * var(--cell) * -1) calc(var(--y) * var(--cell) * -1);
-  box-shadow: 0 0 calc(var(--cell) * .25) rgba(230, 170, 30, .35);
 }
 
 .well td.nonempty[data-color="H"] {
   --c: deeppink;
-  position: relative;
-  z-index: 1;
   filter: brightness(var(--beat));
-  box-shadow: 0 0 calc(var(--cell) * (var(--beat) - .95) * 2) rgba(255, 20, 147, .45);
 }
 
 /* a piece that has landed but not locked yet */
