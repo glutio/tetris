@@ -397,17 +397,6 @@ v *{
 
 <!--<script src="tetris.js" /></script> -->
 <script>
-var wellSize = { width: 10, height: 20 }
-var nextShp = 0;
-var nextR = 0;
-var nextCur = 0;
-var cur = 0;
-var shp=0;
-var r=0;
-var pt = { x:0, y:0 };
-var spd = 800;            
-var timer;
-var score = 0;
 var shapes = {
 
 B:[{org:{x:0,y:0}, s:`
@@ -577,13 +566,49 @@ H:[{org:{x:-1,y:-1}, s:`
   **`}*/]
 };
 
-function makeShapes()
-{
-   for(var p=0; p<Object.keys(shapes).length; p++)
+// Turns the ascii art in `shapes` into 2d arrays the game can work with.
+class Shapes {
+   static make()
    {
-      var key = Object.keys(shapes)[p]; 
-      for(var s=0; s<shapes[key].length; s++)
-            shapes[key][s].s = makeShape(shapes[key][s].s);
+      for(var p=0; p<Object.keys(shapes).length; p++)
+      {
+         var key = Object.keys(shapes)[p];
+         for(var s=0; s<shapes[key].length; s++)
+               shapes[key][s].s = Shapes.makeShape(shapes[key][s].s);
+      }
+   }
+
+   static makeShape(shape)
+   {
+      var x=0;
+      var y=0;
+      var maxX=0;
+      for(var c=0; c<shape.length; c++)
+      {
+        if (shape[c]=='\n') { y++; maxX=Math.max(x, maxX); x=0; } else { x++; }
+      }
+      maxX=Math.max(x, maxX);
+
+      var s=new Array(y);
+      y=-1; x=0;
+      for(var c=0; c<shape.length; c++)
+      {
+        if (shape[c]=='\n') {
+           x=0; y++;
+           s[y]=new Array(maxX);
+        }
+        else {
+           if (shape[c]=='*') s[y][x]=shape[c];
+           x++;
+        }
+      }
+      return s;
+   }
+
+   // TAK, H (heart) and THAI pieces crumble like sand when they land
+   static isSpecial(key)
+   {
+      return key=="TAK" || key=="H" || key=="THAI";
    }
 }
 
@@ -593,476 +618,487 @@ function getRandomInt(min, max) {
   return Math.floor(Math.random() * (max - min)) + min; //The maximum is exclusive and the minimum is inclusive
 }
 
-function nextShape()
-{
-   takMoved = false;
-
-   var paintShp = nextShp;
-   var paintCur = nextCur;
-
-   cur = nextCur;
-   shp = nextShp; 
-   r = nextR;
-   
-   var nextWell = $("#next-well");
-   _paintShape(nextWell, nextCur, { x:0, y:0 }, Object.keys(shapes)[nextShp], false);
-	
-   var isAlmostEmpty = getCell(0,16).closest("tr").find("td").closest(".nonempty").length == 0;    
-   do {
-     nextShp = getRandomInt(0, Object.keys(shapes).length);
-     nextR = getRandomInt(0, shapes[Object.keys(shapes)[nextShp]].length);
-     if (Object.keys(shapes)[nextShp]=="TAK") nextR = 0;
-     nextCur = shapes[Object.keys(shapes)[nextShp]][nextR].s;
-     if ((Object.keys(shapes)[nextShp]=="TAK" || Object.keys(shapes)[nextShp]=="H" || Object.keys(shapes)[nextShp]=="THAI")) {
-        if (!isAlmostEmpty) continue;
-        paintShp = getRandomInt(0, Object.keys(shapes).length-2);
-        paintCur = shapes[Object.keys(shapes)[paintShp]][0].s;
-        paintR = 0;             
-     }
-     else
-     {
-     	paintShp = nextShp;
-        paintCur = nextCur;
-        paintR = nextR;
-     }     
-     break;
-   } while (true); 
-
-   var height = $("#well ._0_0").height();
-   _initWell(nextWell, paintCur[0].length, paintCur.length, height);
-   _paintShape(nextWell, paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
-}
-
-function makeShape(shape)
-{
-   var x=0;
-   var y=0;
-   var maxX=0;
-   for(var c=0; c<shape.length; c++)
-   {
-     if (shape[c]=='\n') { y++; maxX=Math.max(x, maxX); x=0; } else { x++; }
-   }
-   maxX=Math.max(x, maxX);   
-   
-   var s=new Array(y);
-   y=-1; x=0;
-   for(var c=0; c<shape.length; c++)
-   {
-     if (shape[c]=='\n') { 
-	x=0; y++; 
-        s[y]=new Array(maxX);
-     } 
-     else {
-        if (shape[c]=='*') s[y][x]=shape[c];
-        x++;
-     }  
-   }
-   return s;   
-}
-
-function _initWell(well, x, y, size) {
-   well.find("tr").each(function() { $(this).remove(); });
-   for(var i=0; i<y; i++)
-   {
-      var tr=$("<tr/>");
-      well.append(tr);
-      for(var j=0; j<x; j++)
-      {   
-        var td = $("<td/>");
-        td.addClass("_"+i+"_"+j);
-        td.attr("data-x",j);
-        td.attr("data-y",i);
-        tr.append(td);
-      }
-   }
-   well.find("td").css("height", size);
-   well.find("td").css("width", size);
-}
-
-function initWell() {
-   var height = $("body").height();
-   if ($("#bottom-control").is(":visible")) {
-	height-=$("#bottom-control").height();
-   }
-   height/=wellSize.height;
-   
-   var well = $("#well");
-   _initWell(well, wellSize.width, wellSize.height, height);    
-
-   $("#sidebar").css("font-size", Math.max(6, 1.2*height)+"px");
-   $("#elapsed").css("font-size", Math.max(6, 0.8*height)+"px"); 
-
-   $("#again").css("font-size", Math.max(6, 0.8*height)+"px");
-   $("#scoreboard").css("border-width", Math.max(5, 0.5*height)+"px");
-
-   donate = $("#donate form input[type='image']");
-   r=donate.width()/donate.height();
-   donate.height(height*.7);
-   donate.width(r*height*.7);
-} 
-
-function initControl()
-{
-   $("#left").click(function() { moveShape(-1,0); });
-   $("#right").click(function() { moveShape(1,0); });
-   $("#rotate").click(function() { rotateShape(); });
-   $("#drop").click(function() { dropShape(); });
-   $("#well").click(function() { moveShape(0,1); });
-
-   var controlClone = $("#control").clone(true);
-   $("#side-control").append(controlClone);
-   
-   var doc = $(document);
-   if (doc.height() >= doc.width()) {
-	$("#bottom-control").show();
-        //$("#sidebar").hide();
-	$("#side-control-wrap").hide();
-   } else {
-	$("#side-control").css('display', 'inline-block');
-   } 
-   
-   $("#scoreboard").click(function() { reset(); });
-
-}
-
-function getOrigin(respectOrigin, key, r)
-{
-   if (!respectOrigin) return { x:pt.x, y:pt.y };
-   var key = Object.keys(shapes)[shp];
-   var org=shapes[key][r].org; 
-   return { x: pt.x-org.x, y:pt.y-org.y };
-}
-
-function rotateShape()
-{
-   if (isCollapsing) return;
-   var key = Object.keys(shapes)[shp];
-   for(var i=1; i<shapes[key].length; i++) {
-      var newR=(r+i)%shapes[key].length;
-      if (key=="TAK" && newR == 0) {
-         newR = 1;
-      }
-      var newCur=shapes[key][newR].s;
-      var org=getOrigin(!takMoved, key, newR);
-      if (isValidPos(newCur, org)) {
-         paintShape(false);
-         cur=newCur;   
-         r=newR;
-         paintShape(true);
-         break;   
-      }
-   }
-}
-
-function isValidPos(shape, pt)
-{
-   if (pt.x<0 || pt.x+shape[0].length>wellSize.width) return false;
-   if (pt.y+shape.length>wellSize.height) return false;
-
-   for(var y=0; y<shape.length; y++) {                                                                                               
-     for(var x=0; x<shape[y].length; x++) {
-        var cell = getCell(pt.x+x,pt.y+y);
-	if (shape[y][x]=='*' && cell.hasClass("nonempty") && !cell.hasClass("shape")) return false;
-     }
-   }
-   return true;
-}
-
-var isCollapsing = false;
-function _collapseShape(well)
-{
-   var result = false;
-   var shape = well.find(".shape");
-   shape.sort(function(a,b) {
-          var y1 = Number($(a).attr("data-y"));
-          var y2 = Number($(b).attr("data-y"));
-          return (y1<y2) ? 1 : (y1>y2) ? -1 :0;
-   }); 
-      
-   shape.each(function() {
-       var cell = $(this);
-       if (cell.hasClass("nonempty")) { 
-          var x = Number(cell.attr("data-x"));
-          var y = Number(cell.attr("data-y"));
-          
-          var belowCell = _getCell(well, x, y+1);
-          if (belowCell.length && !$(belowCell).hasClass("nonempty")) {
-	      belowCell.addClass("nonempty").addClass("shape").attr("data-color", cell.attr("data-color")); 
-	      cell.removeClass("nonempty").removeClass("shape").removeAttr("data-color");              
-              result = true;
-          }
-      }
-   });
-   isCollapsing = result;   
-   return result;
-}
-
-function collapseShape()
-{
-   var well = $("#well");
-   return _collapseShape(well);
-}
-
-function changeShape()
-{
-   paintShape(false);
-   shp=(shp+1)%Object.keys(shapes).length;
-   r=0;
-   var key = Object.keys(shapes)[shp];
-   cur=shapes[key][r].s;
-   paintShape(true);  
-}
-
-$("#well").keydown(function(event) {
-	switch(event.originalEvent.code)
-        {
-           case "ArrowRight": {
-		event.preventDefault();
-                moveShape(1,0);break;
-	   }
-           case "ArrowLeft": {
-		event.preventDefault();
-		moveShape(-1,0);break;
-	   }
-           case "ArrowUp": {
-		event.preventDefault();
-                rotateShape();break;
-	   }
-           case "ArrowDown": {
-                event.preventDefault();
-                if (inPlay) playGame();
-                break;
-	   }
-           case "Space": {    
-                event.preventDefault();
-		if (!inPlay) {
-                   reset();
-                } else {
-		    dropShape();
-                }
-                break;
-           }
-        }
-});
-
-
-var inPlay=false;
-function playGame()
-{
-    inPlay = true;
-    if (!moveShape(0,1)) {                   
-        if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H" || Object.keys(shapes)[shp]=="THAI") {
-           if (collapseShape()) return;
-        }
-        restShape();
-    };                
-}
-
-function restShape() {
-    if (Object.keys(shapes)[shp]=="TAK" || Object.keys(shapes)[shp]=="H" || Object.keys(shapes)[shp]=="THAI") {
-       while(collapseShape());
-    }
-    embedShape();
-    removeLines();
-    var org = shapes[Object.keys(shapes)[shp]][r].org;
-    if ((pt.y-org.y)<=0)
-    {
-       inPlay = false;
-       clearInterval(timer);
-       inPlay = false;
-       showResetButton();
-       return;
-    }
-    var oldTimer = timer;
-    timer = setInterval(playGame, spd);
-    clearInterval(oldTimer);
-    nextShape();
-    releaseShape();
-    paintShape(true);
-}
-
-function releaseShape()
-{
-    var key = Object.keys(shapes)[shp];
-    var org = shapes[key][r].org;
-    pt.x=Math.floor((wellSize.width-cur[0].length) / 2)+org.x;
-    pt.y=-cur.length;                      
-}
-
-function dropShape()
-{
-    if (!inPlay) return;
-    while(moveShape(0,1));
-    restShape();
-}
-
-function embedShape()
-{
-    $("#well .shape").removeClass("shape");
-}
-
-function showResetButton()
-{
-   var time = $("#elapsed").text();  
-   $("#scoreboard").html("<p>Score <b>"+score+" pts</b></p><p>Time <b>"+time+"</b></p><p>TRY AGAIN!</>");
-   $("#again").show();
-}
-
-var elapsedTimer;
-function showElapsedTime (startTime) {
-    if (!inPlay) return;
-    var today = new Date().getTime();
-    var m = Math.floor((today-startTime) / (1000*60)) % 60;
-    var s = Math.floor((today-startTime) / 1000) % 60;
-    
-    $("#elapsed").text(m + ":" + s.pad(2));
-    
-    elapsedTimer = setTimeout(function() { 
-       showElapsedTime(startTime) 
-    }, 1000);
-}
-
-
 Number.prototype.pad = function(size) {
    var s = String(this);
    while (s.length < (size || 2)) {s = "0" + s;}
    return s;
 }
 
-function _getCell(well, x,y)
-{          
-   var name = well.find("._"+Number(y)+"_"+Number(x));
-   var result = $(name);
-   return result;
-}
-
-function getCell(x,y) {
-  return _getCell($("#well"),x,y);
-}
-
-
-var takMoved = false;
-function moveShape(dx,dy)
-{
-   if (isCollapsing) return false;
-   var key = Object.keys(shapes)[shp];
-   var ptOrg = getOrigin(!takMoved, key, r);
-   if (!isValidPos(cur, { x: ptOrg.x+dx, y: ptOrg.y+dy })) return false;
-   paintShape(false);
-   pt.x+=dx;
-   pt.y+=dy;
-   if (!takMoved) {
-       takMoved = (key=="TAK" && dx !=0 )
-       pt = getOrigin(takMoved, key, r);
-   }
-   paintShape(true);
-   return true;
-}
-
-function removeLines()
-{  
-   var ctLines = 0;
-   var lineScore = 0;
-   var key = Object.keys(shapes)[shp];
-   var org = shapes[key][r].org;   
-      
-   for(var yy=wellSize.height-1 ;yy>=0;yy--)
+// A table of cells: the main well or the little "next" preview.
+class Well {
+   constructor(selector)
    {
-      var line = getCell(0, yy).closest("tr").find("td");
-      var blocks = line.closest(".nonempty");
-      if (blocks.length==0) break; 
-      if (blocks.length==wellSize.width)
+      this.el = $(selector);
+      this.cells = [];
+   }
+
+   init(x, y, size)
+   {
+      var well = this.el;
+      well.find("tr").each(function() { $(this).remove(); });
+      this.cells = [];
+      for(var i=0; i<y; i++)
       {
-         blocks.each(function() { lineScore += Math.max(0, Object.keys(shapes).indexOf($(this).attr("data-color"))); });
-         ctLines++;
-         var lineAbove;
-         for(var y=yy;y>0; y--)
+         var tr=$("<tr/>");
+         well.append(tr);
+         this.cells[i] = [];
+         for(var j=0; j<x; j++)
          {
-            var lineAbove = getCell(0, y-1).closest("tr").find("td");                  
-  	    var blanks = blocks-lineAbove.closest(".nonempty").length;
-            for(var c=0; c<wellSize.width; c++) {
-              if ($(lineAbove[c]).hasClass("nonempty")) {
-                 $(line[c]).addClass("nonempty");              
-                 $(line[c]).attr("data-color",$(lineAbove[c]).attr("data-color"));              
-              }
-              else {                 
-                 $(line[c]).removeClass("nonempty"); 
-                 $(line[c]).removeAttr("data-color");              
-              }           
-            }
-            line=lineAbove;
-            if (blanks==blocks) break;
+           var td = $("<td/>");
+           td.addClass("_"+i+"_"+j);
+           td.attr("data-x",j);
+           td.attr("data-y",i);
+           tr.append(td);
+           this.cells[i][j] = td[0];
          }
-         yy++; 
+      }
+      well.find("td").css("height", size);
+      well.find("td").css("width", size);
+   }
+
+   // cells are kept in this.cells instead of being looked up by class name every time
+   getCell(x,y)
+   {
+      var row = this.cells[Number(y)];
+      return $(row ? row[Number(x)] : null);
+   }
+
+   paintShape(shape, org, color, show)
+   {
+     for(var y=0; y< shape.length; y++)
+        for(var x=0; x< shape[y].length; x++)
+           if (shape[y][x]=='*') {
+               var cell = this.getCell((org.x+x),(org.y+y))
+               if (show) cell.addClass("nonempty").addClass("shape").attr("data-color",color);
+                  else cell.removeClass("nonempty").removeClass("shape").attr("data-color","");
+           }
+   }
+
+   // moves every cell of the current shape down one row if it can; true while anything moved
+   collapseShape()
+   {
+      var well = this;
+      var result = false;
+      var shape = this.el.find(".shape");
+      shape.sort(function(a,b) {
+             var y1 = Number($(a).attr("data-y"));
+             var y2 = Number($(b).attr("data-y"));
+             return (y1<y2) ? 1 : (y1>y2) ? -1 :0;
+      });
+
+      shape.each(function() {
+          var cell = $(this);
+          if (cell.hasClass("nonempty")) {
+             var x = Number(cell.attr("data-x"));
+             var y = Number(cell.attr("data-y"));
+
+             var belowCell = well.getCell(x, y+1);
+             if (belowCell.length && !$(belowCell).hasClass("nonempty")) {
+                 belowCell.addClass("nonempty").addClass("shape").attr("data-color", cell.attr("data-color"));
+                 cell.removeClass("nonempty").removeClass("shape").removeAttr("data-color");
+                 result = true;
+             }
+         }
+      });
+      return result;
+   }
+}
+
+class Game {
+   constructor()
+   {
+      this.wellSize = { width: 10, height: 20 };
+      this.nextShp = 0;
+      this.nextR = 0;
+      this.nextCur = 0;
+      this.cur = 0;
+      this.shp = 0;
+      this.r = 0;
+      this.pt = { x:0, y:0 };
+      this.spd = 800;
+      this.timer = null;
+      this.score = 0;
+      this.takMoved = false;
+      this.isCollapsing = false;
+      this.inPlay = false;
+      this.elapsedTimer = null;
+      this.well = new Well("#well");
+      this.nextWell = new Well("#next-well");
+   }
+
+   start()
+   {
+      Shapes.make();
+      this.controls = new Controls(this);
+      this.initWell();
+      this.nextShape();
+      this.paintShape(true);
+      this.reset();
+      setInterval(() => {
+          this.spd=Math.max(300,this.spd-10);
+      }, 10000);
+   }
+
+   initWell()
+   {
+      var height = $("body").height();
+      if ($("#bottom-control").is(":visible")) {
+         height-=$("#bottom-control").height();
+      }
+      height/=this.wellSize.height;
+
+      this.well.init(this.wellSize.width, this.wellSize.height, height);
+
+      $("#sidebar").css("font-size", Math.max(6, 1.2*height)+"px");
+      $("#elapsed").css("font-size", Math.max(6, 0.8*height)+"px");
+
+      $("#again").css("font-size", Math.max(6, 0.8*height)+"px");
+      $("#scoreboard").css("border-width", Math.max(5, 0.5*height)+"px");
+
+      var donate = $("#donate form input[type='image']");
+      var ratio=donate.width()/donate.height();
+      donate.height(height*.7);
+      donate.width(ratio*height*.7);
+   }
+
+   nextShape()
+   {
+      this.takMoved = false;
+
+      var paintShp = this.nextShp;
+      var paintCur = this.nextCur;
+      var paintR;
+
+      this.cur = this.nextCur;
+      this.shp = this.nextShp;
+      this.r = this.nextR;
+
+      this.nextWell.paintShape(this.nextCur, { x:0, y:0 }, Object.keys(shapes)[this.nextShp], false);
+
+      var isAlmostEmpty = this.getCell(0,16).closest("tr").find("td").closest(".nonempty").length == 0;
+      do {
+        this.nextShp = getRandomInt(0, Object.keys(shapes).length);
+        this.nextR = getRandomInt(0, shapes[Object.keys(shapes)[this.nextShp]].length);
+        if (Object.keys(shapes)[this.nextShp]=="TAK") this.nextR = 0;
+        this.nextCur = shapes[Object.keys(shapes)[this.nextShp]][this.nextR].s;
+        if (Shapes.isSpecial(Object.keys(shapes)[this.nextShp])) {
+           if (!isAlmostEmpty) continue;
+           paintShp = getRandomInt(0, Object.keys(shapes).length-2);
+           paintCur = shapes[Object.keys(shapes)[paintShp]][0].s;
+           paintR = 0;
+        }
+        else
+        {
+           paintShp = this.nextShp;
+           paintCur = this.nextCur;
+           paintR = this.nextR;
+        }
+        break;
+      } while (true);
+
+      var height = this.getCell(0,0).height();
+      this.nextWell.init(paintCur[0].length, paintCur.length, height);
+      this.nextWell.paintShape(paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
+   }
+
+   getOrigin(respectOrigin, key, r)
+   {
+      if (!respectOrigin) return { x:this.pt.x, y:this.pt.y };
+      var key = Object.keys(shapes)[this.shp];
+      var org=shapes[key][r].org;
+      return { x: this.pt.x-org.x, y:this.pt.y-org.y };
+   }
+
+   rotateShape()
+   {
+      if (this.isCollapsing) return;
+      var key = Object.keys(shapes)[this.shp];
+      for(var i=1; i<shapes[key].length; i++) {
+         var newR=(this.r+i)%shapes[key].length;
+         if (key=="TAK" && newR == 0) {
+            newR = 1;
+         }
+         var newCur=shapes[key][newR].s;
+         var org=this.getOrigin(!this.takMoved, key, newR);
+         if (this.isValidPos(newCur, org)) {
+            this.paintShape(false);
+            this.cur=newCur;
+            this.r=newR;
+            this.paintShape(true);
+            break;
+         }
       }
    }
-   if (!lineScore) lineScore = 1;
-   if (ctLines==4) lineScore*=2;
-   score += lineScore;
-   $("#sidebar").text(score.pad(4));
-}
 
-function _paintShape(well, shape, org, color, show)
-{
-  for(var y=0; y< shape.length; y++)
-     for(var x=0; x< shape[y].length; x++) 
-	if (shape[y][x]=='*') {
-	    var cell = _getCell(well, (org.x+x),(org.y+y)) 
-	    if (show) cell.addClass("nonempty").addClass("shape").attr("data-color",color); 
-		else cell.removeClass("nonempty").removeClass("shape").attr("data-color","");
-        } 
-}
+   isValidPos(shape, pt)
+   {
+      if (pt.x<0 || pt.x+shape[0].length>this.wellSize.width) return false;
+      if (pt.y+shape.length>this.wellSize.height) return false;
 
-function paintShape(on)
-{
-   var key = Object.keys(shapes)[shp];
-   var org = getOrigin(!takMoved, key, r);
-   _paintShape($("#well"), cur, org, key, on);
-}
+      for(var y=0; y<shape.length; y++) {
+        for(var x=0; x<shape[y].length; x++) {
+           var cell = this.getCell(pt.x+x,pt.y+y);
+           if (shape[y][x]=='*' && cell.hasClass("nonempty") && !cell.hasClass("shape")) return false;
+        }
+      }
+      return true;
+   }
 
-function reset()
-{
-/*    var touchArea = document.getElementById('wrap');
-    var region = ZingTouch.Region(touchArea);
-    
-    region.bind(touchArea, 'pan', function(e) {
-       var data = e.detail.data[0];
-       console.log(data.directionFromOrigin+"   "+data.distanceFromOrigin);
-       if (data.directionFromOrigin <270 && data.directionFromOrigin >= 90) {
-         moveShape(-1,0);
+   collapseShape()
+   {
+      this.isCollapsing = this.well.collapseShape();
+      return this.isCollapsing;
+   }
+
+   changeShape()
+   {
+      this.paintShape(false);
+      this.shp=(this.shp+1)%Object.keys(shapes).length;
+      this.r=0;
+      var key = Object.keys(shapes)[this.shp];
+      this.cur=shapes[key][this.r].s;
+      this.paintShape(true);
+   }
+
+   playGame()
+   {
+       this.inPlay = true;
+       if (!this.moveShape(0,1)) {
+           if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) {
+              if (this.collapseShape()) return;
+           }
+           this.restShape();
+       };
+   }
+
+   restShape()
+   {
+       if (Shapes.isSpecial(Object.keys(shapes)[this.shp])) {
+          while(this.collapseShape());
        }
-    });
-  */                       	
-    $("#again").hide();   
-    clearInterval(timer);
-    clearTimeout(elapsedTimer);
-    $("#well .nonempty").removeClass("nonempty").removeClass("shape");
-    score = 0;
-    $("#sidebar").text(score.pad(4));  
-    nextShape();                          
-    /*
-    shp=Object.keys(shapes).indexOf("TAK");    
-    r = 0;
-    cur = shapes["TAK"][r].s;
-    */
-    releaseShape();
-    spd = 1000;        
-    timer = setInterval(playGame, spd);                                   
-    inPlay = true;
-    showElapsedTime(new Date().getTime());
-    $("#well").focus();
-    
+       this.embedShape();
+       this.removeLines();
+       var org = shapes[Object.keys(shapes)[this.shp]][this.r].org;
+       if ((this.pt.y-org.y)<=0)
+       {
+          this.inPlay = false;
+          clearInterval(this.timer);
+          this.showResetButton();
+          return;
+       }
+       var oldTimer = this.timer;
+       this.timer = setInterval(() => this.playGame(), this.spd);
+       clearInterval(oldTimer);
+       this.nextShape();
+       this.releaseShape();
+       this.paintShape(true);
+   }
+
+   releaseShape()
+   {
+       var key = Object.keys(shapes)[this.shp];
+       var org = shapes[key][this.r].org;
+       this.pt.x=Math.floor((this.wellSize.width-this.cur[0].length) / 2)+org.x;
+       this.pt.y=-this.cur.length;
+   }
+
+   dropShape()
+   {
+       if (!this.inPlay) return;
+       while(this.moveShape(0,1));
+       this.restShape();
+   }
+
+   embedShape()
+   {
+       this.well.el.find(".shape").removeClass("shape");
+   }
+
+   showResetButton()
+   {
+      var time = $("#elapsed").text();
+      $("#scoreboard").html("<p>Score <b>"+this.score+" pts</b></p><p>Time <b>"+time+"</b></p><p>TRY AGAIN!</p>");
+      $("#again").show();
+   }
+
+   showElapsedTime(startTime)
+   {
+       if (!this.inPlay) return;
+       var today = new Date().getTime();
+       var h = Math.floor((today-startTime) / (1000*60*60));
+       var m = Math.floor((today-startTime) / (1000*60)) % 60;
+       var s = Math.floor((today-startTime) / 1000) % 60;
+
+       $("#elapsed").text((h ? h + ":" + m.pad(2) : m) + ":" + s.pad(2));
+
+       this.elapsedTimer = setTimeout(() => {
+          this.showElapsedTime(startTime)
+       }, 1000);
+   }
+
+   getCell(x,y)
+   {
+     return this.well.getCell(x,y);
+   }
+
+   moveShape(dx,dy)
+   {
+      if (this.isCollapsing) return false;
+      var key = Object.keys(shapes)[this.shp];
+      var ptOrg = this.getOrigin(!this.takMoved, key, this.r);
+      if (!this.isValidPos(this.cur, { x: ptOrg.x+dx, y: ptOrg.y+dy })) return false;
+      this.paintShape(false);
+      this.pt.x+=dx;
+      this.pt.y+=dy;
+      if (!this.takMoved) {
+          this.takMoved = (key=="TAK" && dx !=0 )
+          this.pt = this.getOrigin(this.takMoved, key, this.r);
+      }
+      this.paintShape(true);
+      return true;
+   }
+
+   removeLines()
+   {
+      var ctLines = 0;
+      var lineScore = 0;
+
+      for(var yy=this.wellSize.height-1 ;yy>=0;yy--)
+      {
+         var line = this.getCell(0, yy).closest("tr").find("td");
+         var blocks = line.closest(".nonempty");
+         if (blocks.length==0) break;
+         if (blocks.length==this.wellSize.width)
+         {
+            blocks.each(function() { lineScore += Math.max(0, Object.keys(shapes).indexOf($(this).attr("data-color"))); });
+            ctLines++;
+            for(var y=yy;y>0; y--)
+            {
+               var lineAbove = this.getCell(0, y-1).closest("tr").find("td");
+               var aboveIsEmpty = lineAbove.closest(".nonempty").length == 0;
+               for(var c=0; c<this.wellSize.width; c++) {
+                 if ($(lineAbove[c]).hasClass("nonempty")) {
+                    $(line[c]).addClass("nonempty");
+                    $(line[c]).attr("data-color",$(lineAbove[c]).attr("data-color"));
+                 }
+                 else {
+                    $(line[c]).removeClass("nonempty");
+                    $(line[c]).removeAttr("data-color");
+                 }
+               }
+               line=lineAbove;
+               if (aboveIsEmpty) break;
+            }
+            yy++;
+         }
+      }
+      if (!lineScore) lineScore = 1;
+      if (ctLines==4) lineScore*=2;
+      this.score += lineScore;
+      $("#sidebar").text(this.score.pad(4));
+   }
+
+   paintShape(on)
+   {
+      var key = Object.keys(shapes)[this.shp];
+      var org = this.getOrigin(!this.takMoved, key, this.r);
+      this.well.paintShape(this.cur, org, key, on);
+   }
+
+   reset()
+   {
+       $("#again").hide();
+       clearInterval(this.timer);
+       clearTimeout(this.elapsedTimer);
+       this.well.el.find(".nonempty").removeClass("nonempty").removeClass("shape");
+       this.score = 0;
+       $("#sidebar").text(this.score.pad(4));
+       this.nextShape();
+       /*
+       this.shp=Object.keys(shapes).indexOf("TAK");
+       this.r = 0;
+       this.cur = shapes["TAK"][this.r].s;
+       */
+       this.releaseShape();
+       this.spd = 1000;
+       this.timer = setInterval(() => this.playGame(), this.spd);
+       this.inPlay = true;
+       this.showElapsedTime(new Date().getTime());
+       this.well.el.focus();
+   }
 }
 
-makeShapes();
-initControl();
-initWell();
-nextShape();
-paintShape(true);
-reset();
-setInterval(function() {
-    spd=Math.max(300,spd-10);
-}, 10000);
+// Keyboard and on-screen buttons.
+class Controls {
+   constructor(game)
+   {
+      this.game = game;
+      this.initControl();
+      this.initKeys();
+   }
+
+   initControl()
+   {
+      var game = this.game;
+      $("#left").click(function() { game.moveShape(-1,0); });
+      $("#right").click(function() { game.moveShape(1,0); });
+      $("#rotate").click(function() { game.rotateShape(); });
+      $("#drop").click(function() { game.dropShape(); });
+      $("#well").click(function() { game.moveShape(0,1); });
+
+      var controlClone = $("#control").clone(true);
+      $("#side-control").append(controlClone);
+
+      var doc = $(document);
+      if (doc.height() >= doc.width()) {
+         $("#bottom-control").show();
+         $("#side-control-wrap").hide();
+      } else {
+         $("#side-control").css('display', 'inline-block');
+      }
+
+      $("#scoreboard").click(function() { game.reset(); });
+   }
+
+   initKeys()
+   {
+      var game = this.game;
+      $("#well").keydown(function(event) {
+         switch(event.originalEvent.code)
+         {
+            case "ArrowRight": {
+               event.preventDefault();
+               game.moveShape(1,0);break;
+            }
+            case "ArrowLeft": {
+               event.preventDefault();
+               game.moveShape(-1,0);break;
+            }
+            case "ArrowUp": {
+               event.preventDefault();
+               game.rotateShape();break;
+            }
+            case "ArrowDown": {
+               event.preventDefault();
+               if (game.inPlay) game.playGame();
+               break;
+            }
+            case "Space": {
+               event.preventDefault();
+               if (!game.inPlay) {
+                  game.reset();
+               } else {
+                  game.dropShape();
+               }
+               break;
+            }
+         }
+      });
+   }
+}
+
+var game = new Game();
+game.start();
 </script>
 
 </body>
