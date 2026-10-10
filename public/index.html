@@ -1973,36 +1973,14 @@ ThaiLetter.letters = [
    ["อ", "or àang", "basin"], ["ฮ", "hor nók-hûuk", "owl"]
 ];
 
-// chiptune folk and classical tunes (all public domain) played with WebAudio: pulse-wave lead,
-// triangle oom-pah bass and a noise hi-hat; a random tune each game, speeding up with the game
+// folk and classical tunes (all public domain) played with WebAudio; a random tune each game,
+// speeding up with the game. Two instrument sets: "synth" (detuned saw lead with filter, vibrato,
+// echo and reverb, plucked bass, chord stabs, kick/snare/hi-hat) and "chip" (8-bit pulse wave,
+// triangle bass, noise hi-hat)
 class Music {
    static init()
    {
-      var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
-      var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
-      var acc = { "^": 1, "_": -1, "=": 0, "": 0 };
-      Music.songs.forEach(function(song) {
-         song.notes = [];
-         var step = 0;
-         parse(song.melody, function(tok) {
-            var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
-            var len = Math.round((m[4] ? parseFloat(m[4]) : 1) * 2);
-            if (m[2] != "z") {
-               var up = m[2] == m[2].toLowerCase();
-               var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
-               song.notes[step] = { midi: midi, len: len };
-            }
-            step += len;
-         });
-         song.steps = step;
-         song.bass = [];
-         step = 0;
-         var roots = Object.assign({}, Music.roots, song.roots);
-         parse(song.chords, function(tok) {
-            var p = tok.split(":");
-            for (var i = 0; i < p[1] * 2; i++) song.bass[step++] = roots[p[0]];
-         });
-      });
+      Music.songs.forEach(Music.compile);
       Music.song = Music.songs[0];
 
       var unlock = function() {
@@ -2013,28 +1991,98 @@ class Music {
       Music.gestures.forEach(function(t) { document.addEventListener(t, unlock, true); });
    }
 
+   // turns the melody/chords text into per-sixteenth notes[] and chords[]; returns a list of problems
+   static compile(song)
+   {
+      var errors = [];
+      var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
+      var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      var acc = { "^": 1, "_": -1, "=": 0, "": 0 };
+      song.notes = [];
+      song.tokens = [];
+      var step = 0;
+      parse(song.melody, function(tok) {
+         var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
+         var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
+         song.tokens.push({ tok: tok, step: step, bad: !(len > 0) });
+         if (!(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
+         if (m[2] != "z") {
+            var up = m[2] == m[2].toLowerCase();
+            var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
+            song.notes[step] = { midi: midi, len: len };
+         }
+         step += len;
+      });
+      song.steps = step;
+      song.harmony = [];
+      var roots = Object.assign({}, Music.roots, song.roots);
+      parse(song.chords, function(tok) {
+         var p = tok.split(":");
+         if (p.length != 2 || !(p[1] > 0)) { errors.push("Bad chord \"" + tok + "\" (use name:eighths)"); return; }
+         if (!(p[0] in roots)) errors.push("Unknown chord \"" + p[0] + "\" – add it to roots: { " + p[0] + ": 40 }");
+         // Am = minor, G7 = dominant seventh, anything else major
+         var minor = /^[A-G][b#]?m(?!aj)/.test(p[0]);
+         var chord = { root: roots[p[0]], ivs: [0, minor ? 3 : 4, 7].concat(/7$/.test(p[0]) ? [10] : []) };
+         for (var i = 0; i < p[1] * 2; i++) song.harmony.push(p[0] in roots ? chord : null);
+      });
+      if (song.harmony.length != step)
+         errors.push("Melody is " + step / 2 + " eighths but chords are " + song.harmony.length / 2 + " eighths");
+      return errors;
+   }
+
    // browsers only allow sound after a tap or key press
    static unlock()
    {
       if (!Music.on) return;
-      if (!Music.ctx) {
-         var AC = window.AudioContext || window.webkitAudioContext;
-         if (!AC) return;
-         var ctx = Music.ctx = new AC();
-         Music.master = ctx.createGain();
-         Music.master.gain.value = Music.volume;
-         Music.master.connect(ctx.destination);
-         var n = 32, real = new Float32Array(n), imag = new Float32Array(n);
-         for (var i = 1; i < n; i++) {
-            real[i] = 2 / (i * Math.PI) * Math.sin(2 * Math.PI * i * .25);
-            imag[i] = 2 / (i * Math.PI) * (1 - Math.cos(2 * Math.PI * i * .25));
-         }
-         Music.pulse = ctx.createPeriodicWave(real, imag);
-         Music.noise = ctx.createBuffer(1, ctx.sampleRate * .05, ctx.sampleRate);
-         var data = Music.noise.getChannelData(0);
-         for (var j = 0; j < data.length; j++) data[j] = Math.random() * 2 - 1;
-      }
+      Music.setupAudio();
       Music.start();
+   }
+
+   static setupAudio()
+   {
+      if (Music.ctx) return;
+      var AC = window.AudioContext || window.webkitAudioContext;
+      if (!AC) return;
+      var ctx = Music.ctx = new AC();
+      var comp = ctx.createDynamicsCompressor();
+      comp.threshold.value = -16;
+      comp.ratio.value = 4;
+      comp.connect(ctx.destination);
+      Music.master = ctx.createGain();
+      Music.master.gain.value = Music.volume;
+      Music.master.connect(comp);
+
+      // effects send: dotted-eighth echo and a small hall reverb
+      Music.fx = ctx.createGain();
+      Music.delay = ctx.createDelay(1);
+      var fb = ctx.createGain(), tone = ctx.createBiquadFilter(), echo = ctx.createGain();
+      fb.gain.value = .3;
+      tone.type = "lowpass";
+      tone.frequency.value = 2500;
+      echo.gain.value = .35;
+      Music.fx.connect(Music.delay).connect(tone).connect(fb).connect(Music.delay);
+      tone.connect(echo).connect(Music.master);
+      var verb = ctx.createConvolver(), len = ctx.sampleRate * 1.8;
+      var ir = ctx.createBuffer(2, len, ctx.sampleRate);
+      for (var c = 0; c < 2; c++) {
+         var d = ir.getChannelData(c);
+         for (var i = 0; i < len; i++) d[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / len, 3);
+      }
+      verb.buffer = ir;
+      var wet = ctx.createGain();
+      wet.gain.value = .5;
+      Music.fx.connect(verb).connect(wet).connect(Music.master);
+      Music.delay.delayTime.value = 45 / Music.bpm;
+
+      var n = 32, real = new Float32Array(n), imag = new Float32Array(n);
+      for (var k = 1; k < n; k++) {
+         real[k] = 2 / (k * Math.PI) * Math.sin(2 * Math.PI * k * .25);
+         imag[k] = 2 / (k * Math.PI) * (1 - Math.cos(2 * Math.PI * k * .25));
+      }
+      Music.pulse = ctx.createPeriodicWave(real, imag);
+      Music.noise = ctx.createBuffer(1, ctx.sampleRate * .3, ctx.sampleRate);
+      var data = Music.noise.getChannelData(0);
+      for (var j = 0; j < data.length; j++) data[j] = Math.random() * 2 - 1;
    }
 
    static start()
@@ -2053,26 +2101,40 @@ class Music {
    {
       var ctx = Music.ctx;
       while (Music.next < ctx.currentTime + .15) {
-         Music.playStep(Music.step, Music.next);
+         Music.playStep(Music.song, Music.step, Music.next);
          Music.next += 15 / Music.bpm;
          Music.step = (Music.step + 1) % Music.song.steps;
       }
    }
 
-   static playStep(step, t)
+   // one sixteenth of the song; a 2/4 bar is 8 steps
+   static playStep(song, step, t)
    {
-      var sixteenth = 15 / Music.bpm;
-      var note = Music.song.notes[step];
-      if (note) Music.tone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
-      if (step % 2 == 0) Music.tone("triangle", Music.song.bass[step] + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
-      if (step % 4 == 2) Music.hat(t);
+      var sixteenth = 15 / Music.bpm, mute = Music.mute;
+      var note = song.notes[step], chord = song.harmony[step];
+      if (Music.kit == "chip") {
+         if (note && !mute.lead) Music.chipTone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
+         if (step % 2 == 0 && chord && !mute.bass) Music.chipTone("triangle", chord.root + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
+         if (step % 4 == 2 && !mute.drums) Music.hat(t, .05, .04);
+         return;
+      }
+      if (note && !mute.lead) Music.lead(note.midi, t, note.len * sixteenth);
+      if (chord && step % 4 == 0 && !mute.bass) Music.bass(chord.root + (step % 8 ? 7 : 0), t, sixteenth * 1.8);
+      if (chord && step % 4 == 2 && !mute.chords) Music.stab(chord, t, sixteenth * 1.4);
+      if (!mute.drums) {
+         if (step % 8 == 0) Music.kick(t);
+         if (step % 8 == 4) Music.snare(t);
+         if (step % 2 == 0) Music.hat(t, step % 4 ? .045 : .02, step % 4 ? .06 : .03);
+      }
    }
 
-   static tone(wave, midi, t, len, vol)
+   static freq(midi) { return 440 * Math.pow(2, (midi - 69) / 12); }
+
+   static chipTone(wave, midi, t, len, vol)
    {
       var ctx = Music.ctx, osc = ctx.createOscillator(), env = ctx.createGain();
       if (typeof wave == "string") osc.type = wave; else osc.setPeriodicWave(wave);
-      osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      osc.frequency.value = Music.freq(midi);
       env.gain.setValueAtTime(0, t);
       env.gain.linearRampToValueAtTime(vol, t + .005);
       env.gain.linearRampToValueAtTime(vol * .6, t + Math.min(.08, len * .5));
@@ -2083,16 +2145,134 @@ class Music {
       osc.stop(t + len + .01);
    }
 
-   static hat(t)
+   // two detuned saws and a square sub-octave through a resonant filter, with delayed vibrato
+   static lead(midi, t, len)
+   {
+      var ctx = Music.ctx, f = Music.freq(midi), end = t + len * .92 + .12;
+      var filter = ctx.createBiquadFilter(), env = ctx.createGain();
+      filter.type = "lowpass";
+      filter.Q.value = 4;
+      filter.frequency.setValueAtTime(f * 2, t);
+      filter.frequency.linearRampToValueAtTime(f * 7, t + .02);
+      filter.frequency.setTargetAtTime(f * 3.5, t + .02, .1);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(.075, t + .008);
+      env.gain.setTargetAtTime(.05, t + .008, .08);
+      env.gain.setValueAtTime(.05, t + len * .92);
+      env.gain.setTargetAtTime(0, t + len * .92, .03);
+      var vib = ctx.createOscillator(), depth = ctx.createGain();
+      vib.frequency.value = 5.5;
+      depth.gain.setValueAtTime(0, t);
+      depth.gain.linearRampToValueAtTime(len > .3 ? 14 : 0, t + .3);
+      vib.connect(depth);
+      [["sawtooth", -8, 1], ["sawtooth", 8, 1], ["square", -1200, .35]].forEach(function(v) {
+         var osc = ctx.createOscillator(), g = ctx.createGain();
+         osc.type = v[0];
+         osc.frequency.value = f;
+         osc.detune.value = v[1];
+         depth.connect(osc.detune);
+         g.gain.value = v[2];
+         osc.connect(g).connect(filter);
+         osc.start(t);
+         osc.stop(end);
+      });
+      vib.start(t);
+      vib.stop(end);
+      filter.connect(env);
+      env.connect(Music.master);
+      env.connect(Music.fx);
+   }
+
+   // plucked synth bass: saw through a lowpass that snaps shut
+   static bass(midi, t, len)
+   {
+      var ctx = Music.ctx, osc = ctx.createOscillator(), sub = ctx.createOscillator();
+      var filter = ctx.createBiquadFilter(), env = ctx.createGain();
+      osc.type = "sawtooth";
+      sub.type = "sine";
+      osc.frequency.value = sub.frequency.value = Music.freq(midi);
+      filter.type = "lowpass";
+      filter.Q.value = 6;
+      filter.frequency.setValueAtTime(1600, t);
+      filter.frequency.setTargetAtTime(220, t, .06);
+      env.gain.setValueAtTime(.3, t);
+      env.gain.setTargetAtTime(.15, t, .1);
+      env.gain.setTargetAtTime(0, t + len, .03);
+      osc.connect(filter);
+      sub.connect(filter);
+      filter.connect(env).connect(Music.master);
+      [osc, sub].forEach(function(o) { o.start(t); o.stop(t + len + .2); });
+   }
+
+   // short chord on the off-beat (the "pah" of oom-pah), voiced around middle C
+   static stab(chord, t, len)
+   {
+      var ctx = Music.ctx, filter = ctx.createBiquadFilter(), env = ctx.createGain();
+      filter.type = "lowpass";
+      filter.frequency.setValueAtTime(3000, t);
+      filter.frequency.setTargetAtTime(900, t, .05);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(.05, t + .005);
+      env.gain.setTargetAtTime(0, t + .01, len * .35);
+      var base = 55 + ((chord.root - 55) % 12 + 12) % 12;
+      chord.ivs.forEach(function(iv) {
+         var osc = ctx.createOscillator();
+         osc.type = "sawtooth";
+         osc.frequency.value = Music.freq(base + iv);
+         osc.connect(filter);
+         osc.start(t);
+         osc.stop(t + len + .3);
+      });
+      filter.connect(env);
+      env.connect(Music.master);
+      env.connect(Music.fx);
+   }
+
+   static kick(t)
+   {
+      var ctx = Music.ctx, osc = ctx.createOscillator(), env = ctx.createGain();
+      osc.frequency.setValueAtTime(160, t);
+      osc.frequency.exponentialRampToValueAtTime(45, t + .12);
+      env.gain.setValueAtTime(.55, t);
+      env.gain.exponentialRampToValueAtTime(.001, t + .3);
+      osc.connect(env).connect(Music.master);
+      osc.start(t);
+      osc.stop(t + .3);
+   }
+
+   static snare(t)
    {
       var ctx = Music.ctx, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
       src.buffer = Music.noise;
       hp.type = "highpass";
-      hp.frequency.value = 7000;
-      env.gain.setValueAtTime(.05, t);
-      env.gain.exponentialRampToValueAtTime(.001, t + .04);
+      hp.frequency.value = 1200;
+      env.gain.setValueAtTime(.2, t);
+      env.gain.exponentialRampToValueAtTime(.001, t + .18);
+      src.connect(hp).connect(env).connect(Music.master);
+      env.connect(Music.fx);
+      src.start(t);
+      var body = ctx.createOscillator(), benv = ctx.createGain();
+      body.type = "triangle";
+      body.frequency.setValueAtTime(220, t);
+      body.frequency.exponentialRampToValueAtTime(150, t + .08);
+      benv.gain.setValueAtTime(.15, t);
+      benv.gain.exponentialRampToValueAtTime(.001, t + .1);
+      body.connect(benv).connect(Music.master);
+      body.start(t);
+      body.stop(t + .1);
+   }
+
+   static hat(t, vol, decay)
+   {
+      var ctx = Music.ctx, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
+      src.buffer = Music.noise;
+      hp.type = "highpass";
+      hp.frequency.value = 7500;
+      env.gain.setValueAtTime(vol, t);
+      env.gain.exponentialRampToValueAtTime(.001, t + decay);
       src.connect(hp).connect(env).connect(Music.master);
       src.start(t);
+      src.stop(t + decay);
    }
 
    static stopTimer()
@@ -2143,10 +2323,13 @@ class Music {
    static tempo(spd)
    {
       Music.bpm = 140 + (1000 - spd) / 700 * 60;
+      if (Music.delay) Music.delay.delayTime.value = 45 / Music.bpm;
    }
 }
 Music.on = (function() { try { return localStorage.getItem("gotetris.music") != "0"; } catch (e) { return true; } })();
-Music.volume = .5;
+Music.kit = "synth";
+Music.mute = {};
+Music.volume = .6;
 Music.bpm = 140;
 Music.step = 0;
 Music.next = 0;
