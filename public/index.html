@@ -290,7 +290,7 @@ table {
 #elapsed,
 #best,
 #sidebar {
-  --w: calc(var(--cell) * 3.4);
+  --w: calc(var(--cell) * 3.4 * var(--hud, 1));
   --pos: min(calc(100% + var(--gap)), max(calc(100% + var(--free) - var(--w)), calc(100% - var(--cell) * .15 - var(--w))));
   position:absolute;
   left: var(--pos);
@@ -298,7 +298,7 @@ table {
   top: 3%;
   text-align:center;
   font-family:monospace;
-  font-size: calc(var(--cell) * 1.2);
+  font-size: calc(var(--cell) * 1.2 * var(--hud, 1));
   font-weight:bold;
   color:rgba(40, 40, 40, 0.5);
   text-shadow: 1px 1px 4px rgba(50, 50, 50, 0.25);
@@ -312,14 +312,14 @@ table {
 }
 
 #best {
-  top: calc(3% + var(--cell) * 1.45);
-  font-size: calc(var(--cell) * .45);
+  top: calc(3% + var(--cell) * 1.45 * var(--hud, 1));
+  font-size: calc(var(--cell) * .45 * var(--hud, 1));
   letter-spacing: .1em;
 }
 
 #elapsed {
-  top: calc(3% + var(--cell) * 2.2);   /* just under the best score */
-  font-size: calc(var(--cell) * .8);
+  top: calc(3% + var(--cell) * 2.2 * var(--hud, 1));   /* just under the best score */
+  font-size: calc(var(--cell) * .8 * var(--hud, 1));
 }
 
 /* blocks: the original flat colors with a thin edge */
@@ -440,7 +440,7 @@ table {
     padding: max(8px, env(safe-area-inset-top)) max(8px, env(safe-area-inset-right)) max(8px, env(safe-area-inset-bottom)) max(8px, env(safe-area-inset-left));
     overflow: hidden;
     text-align:center;
-    font-size: min(calc(var(--cell) * .8), 3.4vh);
+    font-size: min(5.2vh, 7vw, 36px); /* from the screen, not the cells */
     background: rgba(245, 245, 248, .35);
     -webkit-backdrop-filter: blur(2px);
     backdrop-filter: blur(2px);
@@ -456,9 +456,9 @@ table {
     background: rgba(247, 239, 215, 0.92);
     color: rgba(148, 106, 80, 0.9);
     text-shadow:2px -2px 5px rgba(199,199,199,0.6);
-    border: calc(var(--cell) * .5) solid #b5a759;
+    border: .4em solid #b5a759;
     border-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='80' height='80' fill='%23b5a759'%3E%3Ccircle cx='10' cy='10' r='10'/%3E%3Ccircle cx='40' cy='10' r='10'/%3E%3Ccircle cx='70' cy='10' r='10'/%3E%3Ccircle cx='10' cy='40' r='10'/%3E%3Ccircle cx='70' cy='40' r='10'/%3E%3Ccircle cx='10' cy='70' r='10'/%3E%3Ccircle cx='40' cy='70' r='10'/%3E%3Ccircle cx='70' cy='70' r='10'/%3E%3C/svg%3E") 20 round; /* round dots; Safari draws dotted as squares */
-    border-radius: calc(var(--cell) * .6);
+    border-radius: .5em;
     text-align:center;
     font-family:serif;
     font-weight: bold;
@@ -1377,6 +1377,9 @@ class Game {
       root.setProperty("--cell", size + "px");
       root.setProperty("--ncell", Math.round(size * 2 / 3) + "px");
       root.setProperty("--btn", btn + "px");
+      // landscape: score/time grow into the free side column (up to 2x)
+      var free = (w - size*10.4) / 2 - size*1.1;
+      root.setProperty("--hud", portrait ? 1 : Math.max(1, Math.min(2, free / (size*3.4), 56 / (size*1.2))).toFixed(2));
 
       // upside-down landscape puts the buttons on the left
       var type = screen.orientation ? screen.orientation.type : "";
