@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>gotetris song tester</title>
+<style>
+body { font: 15px system-ui, sans-serif; max-width: 900px; margin: 1em auto; padding: 0 1em; background: #fafafc; color: #333; }
+h1 { font-size: 1.4em; }
+textarea { width: 100%; height: 11em; font: 13px ui-monospace, Consolas, monospace; box-sizing: border-box; }
+button { font: inherit; padding: .4em 1.2em; border-radius: 2em; border: 0; background: deeppink; color: #fff; cursor: pointer; }
+button.secondary { background: #888; }
+.row { display: flex; flex-wrap: wrap; gap: 1em; align-items: center; margin: .8em 0; }
+#report { white-space: pre-wrap; font: 13px ui-monospace, Consolas, monospace; background: #fff; border: 1px solid #ddd; padding: .6em; }
+.ok { color: green; } .err { color: #c00; } .warn { color: #b60; }
+#tokens { font: 13px ui-monospace, Consolas, monospace; line-height: 1.9; }
+#tokens span { padding: 1px 3px; border-radius: 3px; }
+#tokens span.bad { background: #fcc; }
+#tokens span.now { background: deeppink; color: #fff; }
+#tokens span.bar { border-left: 2px solid #ccc; margin-left: 4px; }
+details { margin: 1em 0; }
+code { background: #eee; padding: 0 3px; }
+</style>
+</head>
+<body>
+<h1>gotetris song tester</h1>
+<p>Paste a song in the <code>Music.songs</code> format and press Play. It uses the same synth as the game.
+An optional <code>roots: { X: 40 }</code> adds chords that aren't built in.</p>
+
+<textarea id="src" spellcheck="false">{
+   name: "MySong",
+   melody: "A G A E C E A2 A G A E C E A2 A B c B c A B A B G A G A F A2 A G A E C E A2 A G A E C E A2 A B c B c A B A B G A G A F A2",
+   chords: "Am:8 Am:8 Am:4 G7:4 Am:8 Am:8 Am:4 F:4"
+}</textarea>
+
+<div class="row">
+   <button id="play">▶ Play</button>
+   <button id="stop" class="secondary">■ Stop</button>
+   <label><input id="loop" type="checkbox" checked> loop</label>
+   <label>tempo <input id="bpm" type="range" min="80" max="220" value="140"> <span id="bpmv">140</span> bpm</label>
+   <label><input id="bassOn" type="checkbox" checked> bass</label>
+   <label><input id="hatOn" type="checkbox" checked> hi-hat</label>
+</div>
+
+<div id="report"></div>
+<p id="tokens"></p>
+
+<details>
+<summary>Format</summary>
+<ul>
+<li><b>melody</b>: notes separated by spaces. <code>C D E F G A B</code> = octave from C5, lower case = octave up,
+   trailing <code>,</code> = octave down (<code>A,</code>). <code>^F</code> sharp, <code>_B</code> flat (no key signature).
+   Length in eighths after the note: <code>E</code>=1/8, <code>E2</code>=1/4, <code>E4</code>=1/2, <code>E1.5</code> dotted, <code>E.5</code>=1/16.
+   <code>z2</code> = rest.</li>
+<li><b>chords</b>: <code>name:eighths</code>, played as root/octave bass. Must add up to the melody length;
+   total should be a multiple of 4 eighths.</li>
+<li>Built-in chords: <span id="known"></span></li>
+</ul>
+</details>
+
+<script>
+// same parser and synth as Music in public/index.html
+var ROOTS = { Dm: 38, A7: 45, F: 41, C7: 36, C: 36, Bb: 46, G7: 43, Gm: 43, E: 40, Am: 45 };
+var SEMIS = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+var ACC = { "^": 1, "_": -1, "=": 0, "": 0 };
+document.getElementById("known").textContent = Object.keys(ROOTS).map(function(k) { return k + "=" + ROOTS[k]; }).join(", ");
+
+function compile(text) {
+   var errors = [], warnings = [], song;
+   try { song = Function("return (" + text + ")")(); }
+   catch (e) { return { errors: ["Can't read the song: " + e.message] }; }
+   if (!song || typeof song.melody != "string" || typeof song.chords != "string")
+      return { errors: ["Need melody and chords strings"] };
+   var roots = Object.assign({}, ROOTS, song.roots || {});
+   var notes = [], tokens = [], step = 0;
+   song.melody.trim().split(/\s+/).forEach(function(tok) {
+      var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
+      var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
+      tokens.push({ tok: tok, step: step, len: len, bad: !m || !(len > 0) });
+      if (!m || !(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
+      if (m[2] != "z") {
+         var up = m[2] == m[2].toLowerCase();
+         notes[step] = { midi: 72 + SEMIS[m[2].toUpperCase()] + ACC[m[1]] + (up ? 12 : 0) - 12 * m[3].length, len: len };
+      }
+      step += len;
+   });
+   var steps = step, bass = [];
+   song.chords.trim().split(/\s+/).forEach(function(tok) {
+      var p = tok.split(":");
+      if (p.length != 2 || !(p[1] > 0)) { errors.push("Bad chord \"" + tok + "\" (use name:eighths)"); return; }
+      if (!(p[0] in roots)) errors.push("Unknown chord \"" + p[0] + "\" – add it to roots: { " + p[0] + ": 40 }");
+      for (var i = 0; i < p[1] * 2; i++) bass.push(roots[p[0]]);
+   });
+   if (bass.length != steps)
+      errors.push("Melody is " + steps / 2 + " eighths but chords are " + bass.length / 2 + " eighths");
+   if (steps % 8) warnings.push("Melody length " + steps / 2 + " eighths isn't a multiple of 4 – the loop will be off the beat");
+   return { song: song, notes: notes, bass: bass, steps: steps, tokens: tokens, errors: errors, warnings: warnings };
+}
+
+var ctx, master, pulse, noise, timer, cur, step, next, playing = false;
+
+function initAudio() {
+   if (ctx) return;
+   ctx = new (window.AudioContext || window.webkitAudioContext)();
+   master = ctx.createGain();
+   master.gain.value = .5;
+   master.connect(ctx.destination);
+   var n = 32, real = new Float32Array(n), imag = new Float32Array(n);
+   for (var i = 1; i < n; i++) {
+      real[i] = 2 / (i * Math.PI) * Math.sin(2 * Math.PI * i * .25);
+      imag[i] = 2 / (i * Math.PI) * (1 - Math.cos(2 * Math.PI * i * .25));
+   }
+   pulse = ctx.createPeriodicWave(real, imag);
+   noise = ctx.createBuffer(1, ctx.sampleRate * .05, ctx.sampleRate);
+   var data = noise.getChannelData(0);
+   for (var j = 0; j < data.length; j++) data[j] = Math.random() * 2 - 1;
+}
+
+function tone(wave, midi, t, len, vol) {
+   var osc = ctx.createOscillator(), env = ctx.createGain();
+   if (typeof wave == "string") osc.type = wave; else osc.setPeriodicWave(wave);
+   osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+   env.gain.setValueAtTime(0, t);
+   env.gain.linearRampToValueAtTime(vol, t + .005);
+   env.gain.linearRampToValueAtTime(vol * .6, t + Math.min(.08, len * .5));
+   env.gain.setValueAtTime(vol * .6, t + len - .02);
+   env.gain.linearRampToValueAtTime(0, t + len);
+   osc.connect(env).connect(master);
+   osc.start(t);
+   osc.stop(t + len + .01);
+}
+
+function hat(t) {
+   var src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
+   src.buffer = noise;
+   hp.type = "highpass";
+   hp.frequency.value = 7000;
+   env.gain.setValueAtTime(.05, t);
+   env.gain.exponentialRampToValueAtTime(.001, t + .04);
+   src.connect(hp).connect(env).connect(master);
+   src.start(t);
+}
+
+function bpm() { return +document.getElementById("bpm").value; }
+
+function tick() {
+   while (next < ctx.currentTime + .15) {
+      var sixteenth = 15 / bpm(), note = cur.notes[step];
+      if (note) tone(pulse, note.midi, next, note.len * sixteenth * .9, .09);
+      if (step % 2 == 0 && document.getElementById("bassOn").checked && cur.bass[step] != null)
+         tone("triangle", cur.bass[step] + (step % 4 ? 12 : 0), next, sixteenth * 1.6, .22);
+      if (step % 4 == 2 && document.getElementById("hatOn").checked) hat(next);
+      highlightAt(step, next);
+      next += sixteenth;
+      step++;
+      if (step >= cur.steps) {
+         if (!document.getElementById("loop").checked) { stop(next); return; }
+         step = 0;
+      }
+   }
+}
+
+function highlightAt(s, t) {
+   var i = cur.tokens.findIndex(function(x) { return x.step == s && !x.bad; });
+   if (i < 0) return;
+   setTimeout(function() {
+      if (!playing) return;
+      document.querySelectorAll("#tokens .now").forEach(function(e) { e.classList.remove("now"); });
+      var el = document.querySelector('#tokens span[data-i="' + i + '"]');
+      if (el) el.classList.add("now");
+   }, Math.max(0, (t - ctx.currentTime) * 1000));
+}
+
+function stop(at) {
+   clearInterval(timer);
+   timer = null;
+   var wait = at ? Math.max(0, (at - ctx.currentTime) * 1000) : 0;
+   setTimeout(function() {
+      playing = false;
+      document.querySelectorAll("#tokens .now").forEach(function(e) { e.classList.remove("now"); });
+   }, wait);
+   if (!at) master.gain.setTargetAtTime(0, ctx.currentTime, .03);
+}
+
+function render(c) {
+   var out = [];
+   if (c.song) out.push('<span class="ok">' + (c.song.name || "(no name)") + ": " + c.steps / 2 + " eighths = " + c.steps / 8 +
+      " bars of 2/4, " + (c.steps * 15 / 140).toFixed(1) + " s at 140 bpm</span>");
+   c.errors.forEach(function(e) { out.push('<span class="err">✗ ' + e + "</span>"); });
+   (c.warnings || []).forEach(function(e) { out.push('<span class="warn">! ' + e + "</span>"); });
+   if (!c.errors.length) out.push('<span class="ok">✓ Ready to paste into Music.songs</span>');
+   document.getElementById("report").innerHTML = out.join("\n");
+   var tokEl = document.getElementById("tokens");
+   tokEl.innerHTML = "";
+   (c.tokens || []).forEach(function(t, i) {
+      var s = document.createElement("span");
+      s.textContent = t.tok;
+      s.dataset.i = i;
+      if (t.bad) s.className = "bad";
+      if (t.step % 8 == 0 && t.step) s.classList.add("bar");
+      tokEl.appendChild(s);
+      tokEl.appendChild(document.createTextNode(" "));
+   });
+}
+
+function check() { var c = compile(document.getElementById("src").value); render(c); return c; }
+
+document.getElementById("src").addEventListener("input", check);
+document.getElementById("bpm").addEventListener("input", function() { document.getElementById("bpmv").textContent = bpm(); });
+document.getElementById("play").addEventListener("click", function() {
+   var c = check();
+   // chord problems still play (missing bass), but unreadable notes don't
+   if (!c.song || c.tokens.some(function(t) { return t.bad; })) return;
+   initAudio();
+   ctx.resume();
+   clearInterval(timer);
+   master.gain.cancelScheduledValues(ctx.currentTime);
+   master.gain.setValueAtTime(.5, ctx.currentTime);
+   cur = c;
+   step = 0;
+   next = ctx.currentTime + .05;
+   playing = true;
+   timer = setInterval(tick, 25);
+});
+document.getElementById("stop").addEventListener("click", function() { if (ctx) stop(); });
+check();
+</script>
+</body>
+</html>
