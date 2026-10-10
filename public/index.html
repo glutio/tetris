@@ -396,7 +396,7 @@ table {
     0 0 calc(var(--cell) * (var(--beat) - .97) * 3.5) calc(var(--cell) * (var(--beat) - 1) * .5) rgba(255, 20, 147, .65);
 }
 
-/* a dropped piece in its grace period, before it locks (special pieces settle at once, so no highlight) */
+/* a dropped piece in its last tick before it locks (special pieces settle at once, so no highlight) */
 #well.landing td.shape:not([data-color="TAK"]):not([data-color="H"]):not([data-color="THAI"]) {
   filter: brightness(1.2);
 }
@@ -1213,9 +1213,7 @@ class Game {
       this.elapsedTimer = null;
       this.startTime = 0;
       this.pausedAt = 0;
-      this.landing = false;      // touched down, waiting to lock
-      this.lockTimer = null;
-      this.lockResets = 0;
+      this.landing = false;      // dropped and waiting one tick to lock
       this.crumbleTimer = null;
       this.well = new Well("#well");
       this.nextWell = new Well("#next-well");
@@ -1234,32 +1232,28 @@ class Game {
       }, 10000);
    }
 
-   // lock delay: a landed piece can still slide/rotate for a moment before it locks
+   // a dropped piece gets one full tick (at the current speed) to slide/rotate before it locks
    startLock()
    {
       this.landing = true;
       this.well.el.addClass("landing");
-      clearTimeout(this.lockTimer);
-      this.lockTimer = setTimeout(() => this.lockShape(), Game.lockDelay);
+      clearInterval(this.timer);
+      this.timer = setInterval(() => this.playGame(), this.spd);
    }
 
    clearLock()
    {
       this.landing = false;
-      this.lockResets = 0;
-      clearTimeout(this.lockTimer);
-      this.lockTimer = null;
       this.well.el.removeClass("landing");
    }
 
-   // called after the player moves/rotates a landed piece
+   // called after the player moves/rotates a dropped piece: off the ledge it falls again
    touchLock()
    {
       if (!this.landing) return;
       var key = Object.keys(shapes)[this.shp];
       var org = this.getOrigin(!this.takMoved, key, this.r);
       if (this.isValidPos(this.cur, { x: org.x, y: org.y+1 })) this.clearLock();
-      else if (++this.lockResets <= Game.maxLockResets) this.startLock();
    }
 
    lockShape()
@@ -1289,12 +1283,10 @@ class Game {
          ThaiLetter.show();
          clearInterval(this.timer);
          clearTimeout(this.elapsedTimer);
-         clearTimeout(this.lockTimer);
       } else {
          this.startTime += new Date().getTime() - this.pausedAt;
          clearInterval(this.timer);
          this.timer = setInterval(() => this.playGame(), this.spd);
-         if (this.landing) this.startLock();
          this.showElapsedTime();
          this.well.el.focus();
       }
@@ -1468,10 +1460,8 @@ class Game {
    {
        if (this.paused || this.crumbleTimer) return;
        this.inPlay = true;
-       // a falling piece locks on the tick after it lands; a dropped one waits out its grace period
-       if (!this.moveShape(0,1)) {
-           if (!this.landing) this.lockShape();
-       };
+       // landed (by falling or a drop): it locks on the next tick
+       if (!this.moveShape(0,1)) this.lockShape();
    }
 
    restShape()
@@ -1507,7 +1497,7 @@ class Game {
        this.pt.y=-this.cur.length;
    }
 
-   // drop slides the piece to the bottom, where it can still slide/rotate for a moment;
+   // drop slides the piece to the bottom, where it can still slide/rotate for one tick;
    // dropping again locks it at once (special pieces settle right away instead of crumbling)
    dropShape()
    {
@@ -1960,8 +1950,6 @@ class InstallApp {
 var game = new Game();
 // on-screen buttons are off unless the player switches them on (pause screen); remembered
 Game.showButtons = (function() { try { return localStorage.getItem("gotetris.buttons") == "1"; } catch (e) { return false; } })();
-Game.lockDelay = 500;      // ms a landed piece can still move
-Game.maxLockResets = 15;   // moves/rotations that restart the lock delay
 game.start();
 ThaiLetter.init();
 InstallApp.init();
