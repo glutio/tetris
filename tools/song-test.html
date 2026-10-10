@@ -31,14 +31,16 @@ input[type=number] { width: 4.5em; }
 <body>
 <h1>gotetris song tester</h1>
 <p>Import a MIDI file or paste a song in the <code>Music.songs</code> format, then press Play. It uses the game's own synth code.
-An optional <code>roots: { X: 40 }</code> adds chords that aren't built in.</p>
+An optional <code>roots: { X: 40 }</code> adds chords that aren't built in; optional <code>bass: "A,,2 E,,2"</code>
+(written like the melody) and <code>drums: "k.h.s.h."</code> (k kick, s snare, h hat, o open hat, . rest, per sixteenth, repeated)
+replace the automatic bass and beat.</p>
 
 <details id="import" open>
 <summary><b>Import from MIDI</b> – only music you may use: public-domain tunes or your own</summary>
 <div id="drop">Drop a MIDI file here or click to choose<input id="file" type="file" accept=".mid,.midi,audio/midi" hidden></div>
 <p id="info"></p>
 <div id="setup" hidden>
-<table id="tracks"><thead><tr><th>Track</th><th>Notes</th><th>Range</th><th>Melody</th><th>Harmony</th></tr></thead><tbody></tbody></table>
+<table id="tracks"><thead><tr><th>Track</th><th>Notes</th><th>Range</th><th>Melody</th><th>Bass</th><th>Harmony</th><th>Drums</th></tr></thead><tbody></tbody></table>
 <div class="row">
    <label>name <input id="name" value="MySong"></label>
    <label>start at bar <input id="from" type="number" min="1" value="1"></label>
@@ -116,22 +118,42 @@ class Music {
       var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
       var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
       var acc = { "^": 1, "_": -1, "=": 0, "": 0 };
+      // a line of notes into per-sixteenth notes[]; tokens[] (for the tester) when given; returns the steps
+      var notes = function(str, out, tokens) {
+         var step = 0;
+         parse(str, function(tok) {
+            var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
+            var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
+            if (tokens) tokens.push({ tok: tok, step: step, bad: !(len > 0) });
+            if (!(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
+            if (m[2] != "z") {
+               var up = m[2] == m[2].toLowerCase();
+               var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
+               out[step] = { midi: midi, len: len };
+            }
+            step += len;
+         });
+         return step;
+      };
       song.notes = [];
       song.tokens = [];
-      var step = 0;
-      parse(song.melody, function(tok) {
-         var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
-         var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
-         song.tokens.push({ tok: tok, step: step, bad: !(len > 0) });
-         if (!(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
-         if (m[2] != "z") {
-            var up = m[2] == m[2].toLowerCase();
-            var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
-            song.notes[step] = { midi: midi, len: len };
-         }
-         step += len;
-      });
+      var step = notes(song.melody, song.notes, song.tokens);
       song.steps = step;
+      // optional own bass line (same notes as the melody, e.g. "A,,2 E,,2"), else root/fifth from the chords
+      song.bassNotes = null;
+      if (song.bass) {
+         song.bassNotes = [];
+         var bassSteps = notes(song.bass, song.bassNotes);
+         if (bassSteps != step) errors.push("Melody is " + step / 2 + " eighths but bass is " + bassSteps / 2 + " eighths");
+      }
+      // optional drum pattern, one letter per sixteenth, repeated: k kick, s snare, h hi-hat, o open hat, . rest
+      song.drumSteps = null;
+      if (song.drums) {
+         song.drumSteps = song.drums.replace(/\s+/g, "");
+         var bad = /[^kshoKSHO.]/.exec(song.drumSteps);
+         if (bad) errors.push("Bad drum \"" + bad[0] + "\" (use k s h o .)");
+         if (!song.drumSteps) song.drumSteps = null;
+      }
       song.harmony = [];
       var roots = Object.assign({}, Music.roots, song.roots);
       parse(song.chords, function(tok) {
@@ -230,19 +252,39 @@ class Music {
    {
       var sixteenth = 15 / Music.bpm, mute = Music.mute;
       var note = song.notes[step], chord = song.harmony[step];
+      var bass = song.bassNotes ? song.bassNotes[step] : null;
+      var drum = song.drumSteps ? song.drumSteps[step % song.drumSteps.length] : null;
       if (Music.kit == "chip") {
          if (note && !mute.lead) Music.chipTone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
-         if (step % 2 == 0 && chord && !mute.bass) Music.chipTone("triangle", chord.root + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
-         if (step % 4 == 2 && !mute.drums) Music.hat(t, .05, .04);
+         if (!mute.bass) {
+            if (song.bassNotes) { if (bass) Music.chipTone("triangle", bass.midi, t, bass.len * sixteenth * .9, .22); }
+            else if (step % 2 == 0 && chord) Music.chipTone("triangle", chord.root + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
+         }
+         if (!mute.drums) {
+            if (drum) { if (drum != ".") Music.hat(t, /[A-Z]/.test(drum) ? .08 : .05, /[kK]/.test(drum) ? .02 : /[oO]/.test(drum) ? .12 : .04); }
+            else if (step % 4 == 2) Music.hat(t, .05, .04);
+         }
          return;
       }
       if (note && !mute.lead) Music.lead(note.midi, t, note.len * sixteenth);
-      if (chord && step % 4 == 0 && !mute.bass) Music.bass(chord.root + (step % 8 ? 7 : 0), t, sixteenth * 1.8);
+      if (!mute.bass) {
+         if (song.bassNotes) { if (bass) Music.bass(bass.midi, t, bass.len * sixteenth * .9); }
+         else if (chord && step % 4 == 0) Music.bass(chord.root + (step % 8 ? 7 : 0), t, sixteenth * 1.8);
+      }
       if (chord && step % 4 == 2 && !mute.chords) Music.stab(chord, t, sixteenth * 1.4);
       if (!mute.drums) {
-         if (step % 8 == 0) Music.kick(t);
-         if (step % 8 == 4) Music.snare(t);
-         if (step % 2 == 0) Music.hat(t, step % 4 ? .045 : .02, step % 4 ? .06 : .03);
+         if (drum) {
+            // capital letter = accent
+            var d = drum.toLowerCase(), accent = drum != d ? 1.5 : 1;
+            if (d == "k") Music.kick(t, accent);
+            if (d == "s") Music.snare(t, accent);
+            if (d == "h") Music.hat(t, .035 * accent, .05);
+            if (d == "o") Music.hat(t, .04 * accent, .25);
+         } else {
+            if (step % 8 == 0) Music.kick(t);
+            if (step % 8 == 4) Music.snare(t);
+            if (step % 2 == 0) Music.hat(t, step % 4 ? .045 : .02, step % 4 ? .06 : .03);
+         }
       }
    }
 
@@ -346,25 +388,25 @@ class Music {
       env.connect(Music.fx);
    }
 
-   static kick(t)
+   static kick(t, accent)
    {
       var ctx = Music.ctx, osc = ctx.createOscillator(), env = ctx.createGain();
       osc.frequency.setValueAtTime(160, t);
       osc.frequency.exponentialRampToValueAtTime(45, t + .12);
-      env.gain.setValueAtTime(.55, t);
+      env.gain.setValueAtTime(.55 * (accent || 1), t);
       env.gain.exponentialRampToValueAtTime(.001, t + .3);
       osc.connect(env).connect(Music.master);
       osc.start(t);
       osc.stop(t + .3);
    }
 
-   static snare(t)
+   static snare(t, accent)
    {
       var ctx = Music.ctx, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
       src.buffer = Music.noise;
       hp.type = "highpass";
       hp.frequency.value = 1200;
-      env.gain.setValueAtTime(.2, t);
+      env.gain.setValueAtTime(.2 * (accent || 1), t);
       env.gain.exponentialRampToValueAtTime(.001, t + .18);
       src.connect(hp).connect(env).connect(Music.master);
       env.connect(Music.fx);
@@ -668,32 +710,90 @@ function convert() {
    total = Math.ceil(total / 8) * 8; // whole 2/4 bars
    var shift = 12 * +$id("shift").value;
    var melIdx = +document.querySelector("input[name=mel]:checked").value;
+   var bassEl = document.querySelector("input[name=bass]:checked");
+   var bassIdx = bassEl ? +bassEl.value : -1;
    var harm = [].slice.call(document.querySelectorAll("input.harm:checked")).map(function(e) { return midi.tracks[+e.value]; });
+   var drumTracks = [].slice.call(document.querySelectorAll("input.drum:checked")).map(function(e) { return midi.tracks[+e.value]; });
 
-   // melody: highest note at each sixteenth, cut at the next note, rests in the gaps
-   var at = {};
-   midi.tracks[melIdx].notes.forEach(function(n) {
-      var s = Math.round(n.start / q) - from;
-      if (s < 0 || s >= total) return;
-      var len = Math.max(1, Math.round(n.len / q));
-      if (!at[s] || at[s].note < n.note) at[s] = { note: n.note + shift, len: len };
+   // one note at each sixteenth (the highest, or the lowest for the bass), cut at the next note,
+   // rests in the gaps; returns the tokens
+   var line = function(track, lowest, fit) {
+      var at = {};
+      track.notes.forEach(function(n) {
+         if (n.ch == 9) return;
+         var s = Math.round(n.start / q) - from;
+         if (s < 0 || s >= total) return;
+         var len = Math.max(1, Math.round(n.len / q));
+         if (!at[s] || (lowest ? at[s].note > n.note : at[s].note < n.note)) at[s] = { note: n.note, len: len };
+      });
+      var starts = Object.keys(at).map(Number).sort(function(a, b) { return a - b; });
+      var tokens = [], pos = 0;
+      var rest = function(n) { while (n > 0) { var r = Math.min(n, 8); tokens.push("z" + lenText(r)); n -= r; } };
+      starts.forEach(function(s, i) {
+         var nxt = i + 1 < starts.length ? starts[i + 1] : total;
+         var n = at[s], len = Math.min(n.len, nxt - s);
+         rest(s - pos);
+         tokens.push(noteName(fit(n.note)) + lenText(len));
+         pos = s + len;
+      });
+      rest(total - pos);
+      tokens.count = starts.length;
+      return tokens;
+   };
+
+   var high = 0, low = 0;
+   var tokens = line(midi.tracks[melIdx], false, function(m) {
+      m += shift;
+      if (m > 95) high++;
+      if (m < 48) low++;
+      return Math.min(95, Math.max(36, m));
    });
-   var starts = Object.keys(at).map(Number).sort(function(a, b) { return a - b; });
-   var tokens = [], pos = 0, high = 0, low = 0;
-   var rest = function(n) { while (n > 0) { var r = Math.min(n, 8); tokens.push("z" + lenText(r)); n -= r; } };
-   starts.forEach(function(s, i) {
-      var nxt = i + 1 < starts.length ? starts[i + 1] : total;
-      var n = at[s], len = Math.min(n.len, nxt - s);
-      rest(s - pos);
-      if (n.note > 95) high++;
-      if (n.note < 48) low++;
-      tokens.push(noteName(Math.min(95, Math.max(36, n.note))) + lenText(len));
-      pos = s + len;
-   });
-   rest(total - pos);
    if (high) warn.push(high + " notes above B6 – try octave shift −1");
    if (low) warn.push(low + " notes below C3 – try octave shift +1");
-   if (!starts.length) warn.push("No melody notes in these bars");
+   if (!tokens.count) warn.push("No melody notes in these bars");
+
+   // bass: lowest note, folded by octaves into E1–C4 where the synth bass sounds good
+   var bass = null;
+   if (bassIdx >= 0) {
+      bass = line(midi.tracks[bassIdx], true, function(m) {
+         while (m < 28) m += 12;
+         while (m > 60) m -= 12;
+         return m;
+      });
+      if (!bass.count) { warn.push("No bass notes in these bars"); bass = null; }
+   }
+
+   // drums: General MIDI drum notes to k/s/h/o per sixteenth (kick wins, then snare, open hat, hat),
+   // then the shortest 1/2/4/8-bar pattern that the whole stretch mostly repeats
+   var drums = null;
+   if (drumTracks.length) {
+      var rank = { k: 4, s: 3, o: 2, h: 1, ".": 0 };
+      var hits = new Array(total).fill(".");
+      drumTracks.forEach(function(tr) {
+         tr.notes.forEach(function(n) {
+            if (tr.drums && n.ch != 9) return;
+            var s = Math.round(n.start / q) - from;
+            if (s < 0 || s >= total) return;
+            var c = n.note == 35 || n.note == 36 ? "k" : n.note >= 37 && n.note <= 40 ? "s" :
+               n.note == 46 || n.note == 49 || n.note == 57 ? "o" : "h";
+            if (rank[c] > rank[hits[s]]) hits[s] = c;
+         });
+      });
+      if (hits.some(function(c) { return c != "."; })) {
+         var pattern = hits;
+         for (var bars = 1; barSteps * bars < total; bars *= 2) {
+            var len = barSteps * bars, pick = [], same = 0;
+            for (var i = 0; i < len; i++) {
+               var votes = {};
+               for (var j = i; j < total; j += len) votes[hits[j]] = (votes[hits[j]] || 0) + 1;
+               pick[i] = Object.keys(votes).sort(function(a, b) { return votes[b] - votes[a] || rank[b] - rank[a]; })[0];
+            }
+            for (var k = 0; k < total; k++) if (hits[k] == pick[k % len]) same++;
+            if (same >= total * .9) { pattern = pick; break; }
+         }
+         drums = pattern.join("");
+      } else warn.push("No drum hits in these bars");
+   }
 
    // chords: weigh the harmony tracks' pitch classes per segment against major/minor/seventh shapes
    var seg = +$id("seg").value, chords = [], roots = {};
@@ -729,6 +829,8 @@ function convert() {
    var out = "{\n   name: " + JSON.stringify($id("name").value) +
       ",\n   melody: \"" + tokens.join(" ") + "\"" +
       ",\n   chords: \"" + chords.map(function(c) { return c.name + ":" + c.len / 2; }).join(" ") + "\"" +
+      (bass ? ",\n   bass: \"" + bass.join(" ") + "\"" : "") +
+      (drums ? ",\n   drums: \"" + drums + "\"" : "") +
       (Object.keys(roots).length ? ",\n   roots: " + JSON.stringify(roots).replace(/,/g, ", ") : "") + "\n}";
    $id("src").value = out;
    $id("warn").textContent = warn.join(" · ");
@@ -747,23 +849,35 @@ function load(file) {
       var tbody = document.querySelector("#tracks tbody");
       tbody.innerHTML = "";
       // guess: melody = non-drum track with the highest average pitch
-      var mel = 0, bestAvg = -1;
+      var mel = 0, bestAvg = -1, avgs = [];
       midi.tracks.forEach(function(t, i) {
          if (t.drums) return;
-         var avg = t.notes.reduce(function(a, n) { return a + n.note; }, 0) / t.notes.length;
+         var avg = avgs[i] = t.notes.reduce(function(a, n) { return a + n.note; }, 0) / t.notes.length;
          if (avg > bestAvg) { bestAvg = avg; mel = i; }
       });
+      // bass = another non-drum track with the lowest average pitch, if it's low enough
+      var bassIdx = -1;
+      avgs.forEach(function(avg, i) {
+         if (i != mel && avg < 55 && (bassIdx < 0 || avg < avgs[bassIdx])) bassIdx = i;
+      });
+      var radio = function(name, i, on, off) {
+         return '<td><input type="radio" name="' + name + '" value="' + i + '"' + (on ? " checked" : "") + (off ? " disabled" : "") + "></td>";
+      };
       midi.tracks.forEach(function(t, i) {
          var lo = Math.min.apply(null, t.notes.map(function(n) { return n.note; }));
          var hi = Math.max.apply(null, t.notes.map(function(n) { return n.note; }));
          var tr = document.createElement("tr");
          tr.innerHTML = "<td></td><td>" + t.notes.length + "</td><td>" + (t.drums ? "drums" : NAMES[lo % 12] + (Math.floor(lo / 12) - 1) +
             "–" + NAMES[hi % 12] + (Math.floor(hi / 12) - 1)) + "</td>" +
-            '<td><input type="radio" name="mel" value="' + i + '"' + (i == mel ? " checked" : "") + (t.drums ? " disabled" : "") + "></td>" +
-            '<td><input type="checkbox" class="harm" value="' + i + '"' + (!t.drums && i != mel ? " checked" : "") + "></td>";
+            radio("mel", i, i == mel, t.drums) + radio("bass", i, i == bassIdx, t.drums) +
+            '<td><input type="checkbox" class="harm" value="' + i + '"' + (!t.drums && i != mel ? " checked" : "") + "></td>" +
+            '<td><input type="checkbox" class="drum" value="' + i + '"' + (t.drums ? " checked" : " disabled") + "></td>";
          tr.firstChild.textContent = t.name;
          tbody.appendChild(tr);
       });
+      var none = document.createElement("tr");
+      none.innerHTML = '<td colspan="4"><i>no bass line (root/fifth from the chords)</i></td>' + radio("bass", -1, bassIdx < 0) + "<td></td><td></td>";
+      tbody.appendChild(none);
       // start at the bar of the first melody note
       var first = midi.tracks[mel].notes[0].start;
       $id("from").value = 1 + Math.floor(first / (midi.tpb * 4 * midi.timeSig[0] / midi.timeSig[1]));

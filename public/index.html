@@ -1998,22 +1998,42 @@ class Music {
       var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
       var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
       var acc = { "^": 1, "_": -1, "=": 0, "": 0 };
+      // a line of notes into per-sixteenth notes[]; tokens[] (for the tester) when given; returns the steps
+      var notes = function(str, out, tokens) {
+         var step = 0;
+         parse(str, function(tok) {
+            var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
+            var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
+            if (tokens) tokens.push({ tok: tok, step: step, bad: !(len > 0) });
+            if (!(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
+            if (m[2] != "z") {
+               var up = m[2] == m[2].toLowerCase();
+               var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
+               out[step] = { midi: midi, len: len };
+            }
+            step += len;
+         });
+         return step;
+      };
       song.notes = [];
       song.tokens = [];
-      var step = 0;
-      parse(song.melody, function(tok) {
-         var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
-         var len = m ? Math.round((m[4] ? parseFloat(m[4]) : 1) * 2) : 0;
-         song.tokens.push({ tok: tok, step: step, bad: !(len > 0) });
-         if (!(len > 0)) { errors.push("Bad note \"" + tok + "\""); return; }
-         if (m[2] != "z") {
-            var up = m[2] == m[2].toLowerCase();
-            var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
-            song.notes[step] = { midi: midi, len: len };
-         }
-         step += len;
-      });
+      var step = notes(song.melody, song.notes, song.tokens);
       song.steps = step;
+      // optional own bass line (same notes as the melody, e.g. "A,,2 E,,2"), else root/fifth from the chords
+      song.bassNotes = null;
+      if (song.bass) {
+         song.bassNotes = [];
+         var bassSteps = notes(song.bass, song.bassNotes);
+         if (bassSteps != step) errors.push("Melody is " + step / 2 + " eighths but bass is " + bassSteps / 2 + " eighths");
+      }
+      // optional drum pattern, one letter per sixteenth, repeated: k kick, s snare, h hi-hat, o open hat, . rest
+      song.drumSteps = null;
+      if (song.drums) {
+         song.drumSteps = song.drums.replace(/\s+/g, "");
+         var bad = /[^kshoKSHO.]/.exec(song.drumSteps);
+         if (bad) errors.push("Bad drum \"" + bad[0] + "\" (use k s h o .)");
+         if (!song.drumSteps) song.drumSteps = null;
+      }
       song.harmony = [];
       var roots = Object.assign({}, Music.roots, song.roots);
       parse(song.chords, function(tok) {
@@ -2112,19 +2132,39 @@ class Music {
    {
       var sixteenth = 15 / Music.bpm, mute = Music.mute;
       var note = song.notes[step], chord = song.harmony[step];
+      var bass = song.bassNotes ? song.bassNotes[step] : null;
+      var drum = song.drumSteps ? song.drumSteps[step % song.drumSteps.length] : null;
       if (Music.kit == "chip") {
          if (note && !mute.lead) Music.chipTone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
-         if (step % 2 == 0 && chord && !mute.bass) Music.chipTone("triangle", chord.root + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
-         if (step % 4 == 2 && !mute.drums) Music.hat(t, .05, .04);
+         if (!mute.bass) {
+            if (song.bassNotes) { if (bass) Music.chipTone("triangle", bass.midi, t, bass.len * sixteenth * .9, .22); }
+            else if (step % 2 == 0 && chord) Music.chipTone("triangle", chord.root + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
+         }
+         if (!mute.drums) {
+            if (drum) { if (drum != ".") Music.hat(t, /[A-Z]/.test(drum) ? .08 : .05, /[kK]/.test(drum) ? .02 : /[oO]/.test(drum) ? .12 : .04); }
+            else if (step % 4 == 2) Music.hat(t, .05, .04);
+         }
          return;
       }
       if (note && !mute.lead) Music.lead(note.midi, t, note.len * sixteenth);
-      if (chord && step % 4 == 0 && !mute.bass) Music.bass(chord.root + (step % 8 ? 7 : 0), t, sixteenth * 1.8);
+      if (!mute.bass) {
+         if (song.bassNotes) { if (bass) Music.bass(bass.midi, t, bass.len * sixteenth * .9); }
+         else if (chord && step % 4 == 0) Music.bass(chord.root + (step % 8 ? 7 : 0), t, sixteenth * 1.8);
+      }
       if (chord && step % 4 == 2 && !mute.chords) Music.stab(chord, t, sixteenth * 1.4);
       if (!mute.drums) {
-         if (step % 8 == 0) Music.kick(t);
-         if (step % 8 == 4) Music.snare(t);
-         if (step % 2 == 0) Music.hat(t, step % 4 ? .045 : .02, step % 4 ? .06 : .03);
+         if (drum) {
+            // capital letter = accent
+            var d = drum.toLowerCase(), accent = drum != d ? 1.5 : 1;
+            if (d == "k") Music.kick(t, accent);
+            if (d == "s") Music.snare(t, accent);
+            if (d == "h") Music.hat(t, .035 * accent, .05);
+            if (d == "o") Music.hat(t, .04 * accent, .25);
+         } else {
+            if (step % 8 == 0) Music.kick(t);
+            if (step % 8 == 4) Music.snare(t);
+            if (step % 2 == 0) Music.hat(t, step % 4 ? .045 : .02, step % 4 ? .06 : .03);
+         }
       }
    }
 
@@ -2228,25 +2268,25 @@ class Music {
       env.connect(Music.fx);
    }
 
-   static kick(t)
+   static kick(t, accent)
    {
       var ctx = Music.ctx, osc = ctx.createOscillator(), env = ctx.createGain();
       osc.frequency.setValueAtTime(160, t);
       osc.frequency.exponentialRampToValueAtTime(45, t + .12);
-      env.gain.setValueAtTime(.55, t);
+      env.gain.setValueAtTime(.55 * (accent || 1), t);
       env.gain.exponentialRampToValueAtTime(.001, t + .3);
       osc.connect(env).connect(Music.master);
       osc.start(t);
       osc.stop(t + .3);
    }
 
-   static snare(t)
+   static snare(t, accent)
    {
       var ctx = Music.ctx, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
       src.buffer = Music.noise;
       hp.type = "highpass";
       hp.frequency.value = 1200;
-      env.gain.setValueAtTime(.2, t);
+      env.gain.setValueAtTime(.2 * (accent || 1), t);
       env.gain.exponentialRampToValueAtTime(.001, t + .18);
       src.connect(hp).connect(env).connect(Music.master);
       env.connect(Music.fx);
@@ -2339,7 +2379,9 @@ Music.ctx = null;
 Music.gestures = ["pointerdown", "pointerup", "touchend", "keydown", "click"];
 // melody: note letter + length in eighths (default 1); upper case from C5, lower case an octave
 // up, "," an octave down, ^ sharp, _ flat, z rest. chords: chord:length in eighths, played as
-// root/octave bass
+// root/octave bass. Optional bass: its own line written like the melody (e.g. "A,,2 E,,2"),
+// replacing the root/fifth bass. Optional drums: one letter per sixteenth, repeated over the song –
+// k kick, s snare, h hi-hat, o open hat, . rest, capital = accent (e.g. "k.h.s.h.")
 Music.songs = [
    {
       name: "Kalinka",
