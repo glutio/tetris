@@ -291,7 +291,7 @@ table {
 #best,
 #sidebar {
   --w: calc(var(--cell) * 3.4);
-  --pos: min(calc(100% + var(--gap)), max(calc(100% + var(--free) - var(--w)), calc(96% - var(--w))));
+  --pos: min(calc(100% + var(--gap)), max(calc(100% + var(--free) - var(--w)), calc(100% - var(--cell) * .15 - var(--w))));
   position:absolute;
   left: var(--pos);
   width: var(--w);
@@ -318,7 +318,7 @@ table {
 }
 
 #elapsed {
-  top: 20%;
+  top: calc(3% + var(--cell) * 2.2);   /* just under the best score */
   font-size: calc(var(--cell) * .8);
 }
 
@@ -676,16 +676,50 @@ table {
   display: block;
 }
 
-#buttons-toggle {
-  font: inherit;
+.switches {
+  display: flex;
+  justify-content: center;
+  gap: 1.5em;
   font-size: 50%;
   font-family: system-ui, sans-serif;
+}
+.switch {
+  display: inline-flex;
+  align-items: center;
+  gap: .5em;
+  font: inherit;
   color: inherit;
-  background: rgba(255, 255, 255, .6);
-  border: 2px solid currentColor;
-  border-radius: 2em;
-  padding: .2em 1em;
+  background: none;
+  border: 0;
+  padding: .3em;
   cursor: pointer;
+}
+.switch .track {
+  position: relative;
+  width: 2.6em;
+  height: 1.5em;
+  border-radius: 1em;
+  background: #bbb;
+  box-shadow: inset 0 1px 3px rgba(0, 0, 0, .3);
+  transition: background .15s ease;
+}
+.switch .track::after {
+  content: "";
+  position: absolute;
+  top: .15em;
+  left: .15em;
+  width: 1.2em;
+  height: 1.2em;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, .35);
+  transition: transform .15s ease;
+}
+.switch[aria-checked="true"] .track {
+  background: deeppink;
+}
+.switch[aria-checked="true"] .track::after {
+  transform: translateX(1.1em);
 }
 </style>
 </head>
@@ -709,7 +743,7 @@ table {
       <p>tap to play</p>
       <p><button id="install" type="button">Install app</button></p>
       <p id="ios-install" class="hint">Play full screen: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b></p>
-      <p><button id="buttons-toggle" type="button">Show buttons</button></p>
+      <p class="switches"><button id="buttons-switch" class="switch" type="button" role="switch" aria-checked="false"><span class="track"></span>Buttons</button><button id="music-switch" class="switch" type="button" role="switch" aria-checked="true"><span class="track"></span>Music</button></p>
       <section class="help sr-only">
         <h2>How to play</h2>
         <p>Fit the falling blocks into full rows to clear them. Watch out for the special Thai letter, heart and TAK pieces – they crumble like sand when they land.</p>
@@ -1207,6 +1241,7 @@ class Game {
       this.reset();
       setInterval(() => {
           if (this.inPlay && !this.paused) this.spd=Math.max(300,this.spd-10);
+          Music.tempo(this.spd);
       }, 10000);
    }
 
@@ -1261,12 +1296,14 @@ class Game {
          ThaiLetter.show();
          clearInterval(this.timer);
          clearTimeout(this.elapsedTimer);
+         Music.pause();
       } else {
          this.startTime += new Date().getTime() - this.pausedAt;
          clearInterval(this.timer);
          this.timer = setInterval(() => this.playGame(), this.spd);
          this.showElapsedTime();
          this.well.el.focus();
+         Music.play();
       }
       if (p) $("#paused").css("display", "flex"); else $("#paused").hide();
       $("#pause").attr("class", p ? "btn on" : "btn");
@@ -1480,6 +1517,7 @@ class Game {
           this.inPlay = false;
           clearInterval(this.timer);
           clearTimeout(this.elapsedTimer);
+          Music.stop();
           this.showResetButton();
           return;
        }
@@ -1655,6 +1693,8 @@ class Game {
        this.spd = 1000;
        this.timer = setInterval(() => this.playGame(), this.spd);
        this.inPlay = true;
+       Music.tempo(this.spd);
+       Music.play(true);
        this.startTime = new Date().getTime();
        this.showElapsedTime();
        this.well.el.focus();
@@ -1681,16 +1721,22 @@ class Controls {
       this.initButton("#pause", function() { game.setPaused(!game.paused); });
       this.initButton("#pause-corner", function() { game.setPaused(!game.paused); });
 
-      var toggle = $("#buttons-toggle");
-      var label = function() { toggle.text(Game.showButtons ? "Hide buttons" : "Show buttons"); };
-      label();
-      toggle.on("click", function(e) {
-         e.stopPropagation();
-         Game.showButtons = !Game.showButtons;
-         try { localStorage.setItem("gotetris.buttons", Game.showButtons ? "1" : "0"); } catch (err) {}
-         label();
+      // pause screen switches; taps on them don't resume the game
+      var initSwitch = function(selector, get, set) {
+         var el = $(selector);
+         el.attr("aria-checked", get() ? "true" : "false");
+         el.on("click", function(e) {
+            e.stopPropagation();
+            set(!get());
+            el.attr("aria-checked", get() ? "true" : "false");
+         });
+      };
+      initSwitch("#buttons-switch", function() { return Game.showButtons; }, function(v) {
+         Game.showButtons = v;
+         try { localStorage.setItem("gotetris.buttons", v ? "1" : "0"); } catch (err) {}
          game.fitWell();
       });
+      initSwitch("#music-switch", function() { return Music.on; }, function(v) { Music.setOn(v); });
 
       // tap anywhere on the game over screen to play again (not by a tap that was already
       // on its way when the game ended)
@@ -1927,6 +1973,192 @@ ThaiLetter.letters = [
    ["อ", "or àang", "basin"], ["ฮ", "hor nók-hûuk", "owl"]
 ];
 
+// chiptune Kalinka (Russian folk song, public domain) played with WebAudio: pulse-wave lead,
+// triangle oom-pah bass and a noise hi-hat; speeds up with the game
+class Music {
+   static init()
+   {
+      var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
+      var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 10 }; // key of D minor: B is B flat
+      Music.notes = [];
+      var step = 0;
+      parse(Music.melody, function(tok) {
+         var m = /^([A-Ga-gz])([\d.]*)$/.exec(tok);
+         var len = Math.round((m[2] ? parseFloat(m[2]) : 1) * 2);
+         if (m[1] != "z") {
+            var up = m[1] == m[1].toLowerCase();
+            Music.notes[step] = { midi: 72 + semis[m[1].toUpperCase()] + (up ? 12 : 0), len: len };
+         }
+         step += len;
+      });
+      Music.steps = step;
+      Music.bass = [];
+      step = 0;
+      parse(Music.chords, function(tok) {
+         var p = tok.split(":");
+         for (var i = 0; i < p[1] * 2; i++) Music.bass[step++] = Music.roots[p[0]];
+      });
+
+      var unlock = function() {
+         Music.unlock();
+         if (Music.ctx && Music.ctx.state == "running")
+            Music.gestures.forEach(function(t) { document.removeEventListener(t, unlock, true); });
+      };
+      Music.gestures.forEach(function(t) { document.addEventListener(t, unlock, true); });
+   }
+
+   // browsers only allow sound after a tap or key press
+   static unlock()
+   {
+      if (!Music.on) return;
+      if (!Music.ctx) {
+         var AC = window.AudioContext || window.webkitAudioContext;
+         if (!AC) return;
+         var ctx = Music.ctx = new AC();
+         Music.master = ctx.createGain();
+         Music.master.gain.value = Music.volume;
+         Music.master.connect(ctx.destination);
+         var n = 32, real = new Float32Array(n), imag = new Float32Array(n);
+         for (var i = 1; i < n; i++) {
+            real[i] = 2 / (i * Math.PI) * Math.sin(2 * Math.PI * i * .25);
+            imag[i] = 2 / (i * Math.PI) * (1 - Math.cos(2 * Math.PI * i * .25));
+         }
+         Music.pulse = ctx.createPeriodicWave(real, imag);
+         Music.noise = ctx.createBuffer(1, ctx.sampleRate * .05, ctx.sampleRate);
+         var data = Music.noise.getChannelData(0);
+         for (var j = 0; j < data.length; j++) data[j] = Math.random() * 2 - 1;
+      }
+      Music.start();
+   }
+
+   static start()
+   {
+      var ctx = Music.ctx;
+      if (!ctx || !Music.on || !Music.playing) return;
+      if (ctx.state != "running") ctx.resume();
+      Music.master.gain.cancelScheduledValues(ctx.currentTime);
+      Music.master.gain.setValueAtTime(Music.volume, ctx.currentTime);
+      if (Music.timer) return;
+      if (Music.next < ctx.currentTime) Music.next = ctx.currentTime + .05;
+      Music.timer = setInterval(Music.tick, 25);
+   }
+
+   static tick()
+   {
+      var ctx = Music.ctx;
+      while (Music.next < ctx.currentTime + .15) {
+         Music.playStep(Music.step, Music.next);
+         Music.next += 15 / Music.bpm;
+         Music.step = (Music.step + 1) % Music.steps;
+      }
+   }
+
+   static playStep(step, t)
+   {
+      var sixteenth = 15 / Music.bpm;
+      var note = Music.notes[step];
+      if (note) Music.tone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
+      if (step % 2 == 0) Music.tone("triangle", Music.bass[step] + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
+      if (step % 4 == 2) Music.hat(t);
+   }
+
+   static tone(wave, midi, t, len, vol)
+   {
+      var ctx = Music.ctx, osc = ctx.createOscillator(), env = ctx.createGain();
+      if (typeof wave == "string") osc.type = wave; else osc.setPeriodicWave(wave);
+      osc.frequency.value = 440 * Math.pow(2, (midi - 69) / 12);
+      env.gain.setValueAtTime(0, t);
+      env.gain.linearRampToValueAtTime(vol, t + .005);
+      env.gain.linearRampToValueAtTime(vol * .6, t + Math.min(.08, len * .5));
+      env.gain.setValueAtTime(vol * .6, t + len - .02);
+      env.gain.linearRampToValueAtTime(0, t + len);
+      osc.connect(env).connect(Music.master);
+      osc.start(t);
+      osc.stop(t + len + .01);
+   }
+
+   static hat(t)
+   {
+      var ctx = Music.ctx, src = ctx.createBufferSource(), hp = ctx.createBiquadFilter(), env = ctx.createGain();
+      src.buffer = Music.noise;
+      hp.type = "highpass";
+      hp.frequency.value = 7000;
+      env.gain.setValueAtTime(.05, t);
+      env.gain.exponentialRampToValueAtTime(.001, t + .04);
+      src.connect(hp).connect(env).connect(Music.master);
+      src.start(t);
+   }
+
+   static stopTimer()
+   {
+      clearInterval(Music.timer);
+      Music.timer = null;
+   }
+
+   // fromStart: a new game starts the song over
+   static play(fromStart)
+   {
+      Music.playing = true;
+      if (fromStart) { Music.step = 0; Music.next = 0; }
+      Music.start();
+   }
+
+   static pause()
+   {
+      Music.playing = false;
+      Music.stopTimer();
+      if (Music.ctx) Music.ctx.suspend();
+   }
+
+   // game over: fade out
+   static stop()
+   {
+      Music.playing = false;
+      Music.stopTimer();
+      var ctx = Music.ctx;
+      if (ctx) Music.master.gain.setTargetAtTime(0, ctx.currentTime, .05);
+   }
+
+   static setOn(on)
+   {
+      Music.on = on;
+      try { localStorage.setItem("gotetris.music", on ? "1" : "0"); } catch (e) {}
+      if (on) { Music.unlock(); return; }
+      Music.stopTimer();
+      if (Music.ctx) Music.ctx.suspend();
+   }
+
+   // faster game, faster song: 140 bpm at the start, 200 at full speed
+   static tempo(spd)
+   {
+      Music.bpm = 140 + (1000 - spd) / 700 * 60;
+   }
+}
+Music.on = (function() { try { return localStorage.getItem("gotetris.music") != "0"; } catch (e) { return true; } })();
+Music.volume = .5;
+Music.bpm = 140;
+Music.step = 0;
+Music.next = 0;
+Music.playing = false;
+Music.timer = null;
+Music.ctx = null;
+Music.gestures = ["pointerdown", "pointerup", "touchend", "keydown", "click"];
+// note letter + length in eighths (default 1); upper case from C5, lower case an octave up
+Music.melody =
+   // chorus twice: "Kalinka, kalinka, kalinka moya..."
+   "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 " +
+   "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 z2 " +
+   // verse: "Pod sosnoyu, pod zelenoyu..."
+   "A c B A.5 G.5 F2 C2 A c B A.5 G.5 F2 C2 D2 D E G F E D C2 C2 C2 c2 " +
+   "A c G A F2 C2 A c G A F2 C2 D2 D E G F E D c2 B2 A4";
+// chord:length in eighths, played as root/octave bass
+Music.chords =
+   "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 " +
+   "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 Dm:2 " +
+   "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:4 C:4 " +
+   "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:2 Gm:2 A7:4";
+Music.roots = { Dm: 38, A7: 45, F: 41, C7: 36, C: 36, Bb: 46, G7: 43, Gm: 43 };
+
 // home screen app: offline cache (service worker) and an install button/hint on the pause board
 class InstallApp {
    static init()
@@ -1962,6 +2194,7 @@ class InstallApp {
 }
 
 var game = new Game();
+Music.init();
 // on-screen buttons are off unless the player switches them on (pause screen); remembered
 Game.showButtons = (function() { try { return localStorage.getItem("gotetris.buttons") == "1"; } catch (e) { return false; } })();
 game.start();
