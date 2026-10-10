@@ -183,7 +183,7 @@ class Music {
       if (Music.ctx) return;
       var AC = window.AudioContext || window.webkitAudioContext;
       if (!AC) return;
-      var ctx = Music.ctx = new AC();
+      var ctx = Music.ctx = new AC({ latencyHint: "playback" }); // bigger buffers, fewer dropouts
       var comp = ctx.createDynamicsCompressor();
       comp.threshold.value = -16;
       comp.ratio.value = 4;
@@ -240,7 +240,8 @@ class Music {
    static tick()
    {
       var ctx = Music.ctx;
-      while (Music.next < ctx.currentTime + .15) {
+      if (Music.next < ctx.currentTime) Music.next = ctx.currentTime + .02; // main thread stalled: skip, don't bunch up late notes
+      while (Music.next < ctx.currentTime + Music.ahead) {
          Music.playStep(Music.song, Music.step, Music.next);
          Music.next += 15 / Music.bpm;
          Music.step = (Music.step + 1) % Music.song.steps;
@@ -502,6 +503,7 @@ Music.bpm = 140;
 Music.step = 0;
 Music.loops = 0;
 Music.repeats = 3;
+Music.ahead = .4; // s scheduled in advance, rides out main-thread hiccups
 Music.next = 0;
 Music.playing = false;
 Music.timer = null;
@@ -550,7 +552,8 @@ var cur, step, next, timer, playing = false;
 
 function tick() {
    var ctx = Music.ctx;
-   while (next < ctx.currentTime + .15) {
+   if (next < ctx.currentTime) next = ctx.currentTime + .02; // stalled: skip late notes
+   while (next < ctx.currentTime + Music.ahead) {
       Music.playStep(cur, step, next);
       highlightAt(step, next);
       next += 15 / Music.bpm;
