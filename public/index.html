@@ -1973,31 +1973,36 @@ ThaiLetter.letters = [
    ["อ", "or àang", "basin"], ["ฮ", "hor nók-hûuk", "owl"]
 ];
 
-// chiptune Kalinka (Russian folk song, public domain) played with WebAudio: pulse-wave lead,
-// triangle oom-pah bass and a noise hi-hat; speeds up with the game
+// chiptune folk and classical tunes (all public domain) played with WebAudio: pulse-wave lead,
+// triangle oom-pah bass and a noise hi-hat; a random tune each game, speeding up with the game
 class Music {
    static init()
    {
       var parse = function(str, fn) { str.trim().split(/\s+/).forEach(fn); };
-      var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 10 }; // key of D minor: B is B flat
-      Music.notes = [];
-      var step = 0;
-      parse(Music.melody, function(tok) {
-         var m = /^([A-Ga-gz])([\d.]*)$/.exec(tok);
-         var len = Math.round((m[2] ? parseFloat(m[2]) : 1) * 2);
-         if (m[1] != "z") {
-            var up = m[1] == m[1].toLowerCase();
-            Music.notes[step] = { midi: 72 + semis[m[1].toUpperCase()] + (up ? 12 : 0), len: len };
-         }
-         step += len;
+      var semis = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 };
+      var acc = { "^": 1, "_": -1, "=": 0, "": 0 };
+      Music.songs.forEach(function(song) {
+         song.notes = [];
+         var step = 0;
+         parse(song.melody, function(tok) {
+            var m = /^([_^=]?)([A-Ga-gz])(,*)([\d.]*)$/.exec(tok);
+            var len = Math.round((m[4] ? parseFloat(m[4]) : 1) * 2);
+            if (m[2] != "z") {
+               var up = m[2] == m[2].toLowerCase();
+               var midi = 72 + semis[m[2].toUpperCase()] + acc[m[1]] + (up ? 12 : 0) - 12 * m[3].length;
+               song.notes[step] = { midi: midi, len: len };
+            }
+            step += len;
+         });
+         song.steps = step;
+         song.bass = [];
+         step = 0;
+         parse(song.chords, function(tok) {
+            var p = tok.split(":");
+            for (var i = 0; i < p[1] * 2; i++) song.bass[step++] = Music.roots[p[0]];
+         });
       });
-      Music.steps = step;
-      Music.bass = [];
-      step = 0;
-      parse(Music.chords, function(tok) {
-         var p = tok.split(":");
-         for (var i = 0; i < p[1] * 2; i++) Music.bass[step++] = Music.roots[p[0]];
-      });
+      Music.song = Music.songs[0];
 
       var unlock = function() {
          Music.unlock();
@@ -2049,16 +2054,16 @@ class Music {
       while (Music.next < ctx.currentTime + .15) {
          Music.playStep(Music.step, Music.next);
          Music.next += 15 / Music.bpm;
-         Music.step = (Music.step + 1) % Music.steps;
+         Music.step = (Music.step + 1) % Music.song.steps;
       }
    }
 
    static playStep(step, t)
    {
       var sixteenth = 15 / Music.bpm;
-      var note = Music.notes[step];
+      var note = Music.song.notes[step];
       if (note) Music.tone(Music.pulse, note.midi, t, note.len * sixteenth * .9, .09);
-      if (step % 2 == 0) Music.tone("triangle", Music.bass[step] + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
+      if (step % 2 == 0) Music.tone("triangle", Music.song.bass[step] + (step % 4 ? 12 : 0), t, sixteenth * 1.6, .22);
       if (step % 4 == 2) Music.hat(t);
    }
 
@@ -2095,11 +2100,16 @@ class Music {
       Music.timer = null;
    }
 
-   // fromStart: a new game starts the song over
+   // a new game starts a different random tune from the top
    static play(fromStart)
    {
       Music.playing = true;
-      if (fromStart) { Music.step = 0; Music.next = 0; }
+      if (fromStart) {
+         var others = Music.songs.filter(function(s) { return s != Music.song || Music.songs.length == 1; });
+         Music.song = others[Math.floor(Math.random() * others.length)];
+         Music.step = 0;
+         Music.next = 0;
+      }
       Music.start();
    }
 
@@ -2143,21 +2153,63 @@ Music.playing = false;
 Music.timer = null;
 Music.ctx = null;
 Music.gestures = ["pointerdown", "pointerup", "touchend", "keydown", "click"];
-// note letter + length in eighths (default 1); upper case from C5, lower case an octave up
-Music.melody =
-   // chorus twice: "Kalinka, kalinka, kalinka moya..."
-   "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 " +
-   "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 z2 " +
-   // verse: "Pod sosnoyu, pod zelenoyu..."
-   "A c B A.5 G.5 F2 C2 A c B A.5 G.5 F2 C2 D2 D E G F E D C2 C2 C2 c2 " +
-   "A c G A F2 C2 A c G A F2 C2 D2 D E G F E D c2 B2 A4";
-// chord:length in eighths, played as root/octave bass
-Music.chords =
-   "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 " +
-   "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 Dm:2 " +
-   "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:4 C:4 " +
-   "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:2 Gm:2 A7:4";
-Music.roots = { Dm: 38, A7: 45, F: 41, C7: 36, C: 36, Bb: 46, G7: 43, Gm: 43 };
+// melody: note letter + length in eighths (default 1); upper case from C5, lower case an octave
+// up, "," an octave down, ^ sharp, _ flat, z rest. chords: chord:length in eighths, played as
+// root/octave bass
+Music.songs = [
+   {
+      name: "Kalinka",
+      melody:
+         // chorus twice: "Kalinka, kalinka, kalinka moya..."
+         "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 " +
+         "A2 G2 E F G2 E F G2 F E D2 A A G1.5 F.5 E F G2 E F G2 F E D2 z2 " +
+         // verse: "Pod sosnoyu, pod zelenoyu..."
+         "A c _B A.5 G.5 F2 C2 A c _B A.5 G.5 F2 C2 D2 D E G F E D C2 C2 C2 c2 " +
+         "A c G A F2 C2 A c G A F2 C2 D2 D E G F E D c2 _B2 A4",
+      chords:
+         "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 " +
+         "Dm:2 A7:4 A7:4 A7:4 Dm:4 A7:4 A7:4 A7:4 Dm:2 Dm:2 " +
+         "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:4 C:4 " +
+         "F:2 C7:2 F:4 F:2 C7:2 F:4 Bb:4 G7:4 C:2 Gm:2 A7:4"
+   },
+   {
+      // Russian folk song, the classic Tetris theme
+      name: "Korobeiniki",
+      melody:
+         "E2 B, C D2 C B, A,2 A, C E2 D C B,3 C D2 E2 C2 A,2 A,4 " +
+         "z D2 F a2 G F E3 C E2 D C B,2 B, C D2 E2 C2 A,2 A,2 z2 " +
+         "E2 B, C D2 C B, A,2 A, C E2 D C B,3 C D2 E2 C2 A,2 A,4 " +
+         "z D2 F a2 G F E3 C E2 D C B,2 B, C D2 E2 C2 A,2 A,2 z2 " +
+         "E4 C4 D4 B,4 C4 A,4 ^G,4 B,4 E4 C4 D4 B,4 C2 E2 a4 ^g8",
+      chords:
+         "E:8 Am:8 E:8 Am:8 Dm:8 C:8 E:8 Am:8 " +
+         "E:8 Am:8 E:8 Am:8 Dm:8 C:8 E:8 Am:8 " +
+         "Am:8 E:8 Am:8 E:8 Am:8 E:8 Am:8 E:8"
+   },
+   {
+      // Grieg, Peer Gynt
+      name: "In the Hall of the Mountain King",
+      melody:
+         "A, B, C D E C E2 ^D B, ^D2 D _B, D2 A, B, C D E C E A G E C E G4 " +
+         "A, B, C D E C E2 ^D B, ^D2 D _B, D2 A, B, C D E C E A G E C E G4 " +
+         "E ^F ^G A B ^G B2 c ^G c2 B ^G B2 E ^F ^G A B ^G B e d B ^G B d4 " +
+         "E ^F ^G A B ^G B2 c ^G c2 B ^G B2 E ^F ^G A B ^G B e d B ^G B d4",
+      chords:
+         "Am:8 E:8 Am:8 C:8 Am:8 E:8 Am:8 C:8 " +
+         "E:8 Am:4 E:4 E:8 E:8 E:8 Am:4 E:4 E:8 E:8"
+   },
+   {
+      // Offenbach, Orpheus in the Underworld: the can-can
+      name: "Can-Can",
+      melody:
+         "C4 D F E D G2 G2 G A E F D2 D2 D F E D C c B A G F E D " +
+         "C4 D F E D G2 G2 G A E F D2 D2 D F E D C G D E C2 z2",
+      chords:
+         "C:4 G7:4 C:4 G7:4 G7:4 G7:4 C:4 G7:4 " +
+         "C:4 G7:4 C:4 G7:4 G7:4 G7:4 C:2 G7:2 C:4"
+   }
+];
+Music.roots = { Dm: 38, A7: 45, F: 41, C7: 36, C: 36, Bb: 46, G7: 43, Gm: 43, E: 40, Am: 45 };
 
 // home screen app: offline cache (service worker) and an install button/hint on the pause board
 class InstallApp {
