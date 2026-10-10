@@ -159,6 +159,7 @@ function $(what) {
 
 html, body {
   height: 100%;
+  height: 100dvh;
   margin: 0;
   overflow: hidden;
   /* no double-tap/pinch zoom, and ignore the browser's text size setting */
@@ -186,6 +187,7 @@ table {
 /* the well and the controls side by side (landscape) or stacked (portrait) */
 #game {
   height: 100%;
+  height: 100dvh;   /* follows the mobile address bar */
   box-sizing: border-box;
   padding: 4px;
   padding: max(4px, env(safe-area-inset-top)) max(4px, env(safe-area-inset-right)) max(4px, env(safe-area-inset-bottom)) max(4px, env(safe-area-inset-left));
@@ -444,20 +446,6 @@ table {
     backdrop-filter: blur(2px);
 }
 
-#donate {
-  position:absolute;
-  text-align:left;
-  left: 0;
-  bottom:0;
-  opacity:.5;
-  z-index:100;
-}
-
-#donate input[type="image"] {
-  height: calc(var(--cell) * .7);
-  width: auto;
-}
-
 #scoreboard,
 .board {
     box-sizing: border-box;
@@ -702,16 +690,6 @@ table {
 </style>
 </head>
 <body>
-<div id="donate">
-<form action="https://www.paypal.com/cgi-bin/webscr" method="post" target="_top">
-<input type="hidden" name="cmd" value="_s-xclick">
-<input type="hidden" name="encrypted" value="-----BEGIN PKCS7-----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-----END PKCS7-----
-">
-<input type="image" src="https://www.paypalobjects.com/en_US/i/btn/btn_donate_LG.gif" border="0" name="submit" alt="PayPal - The safer, easier way to pay online!">
-<img alt="" border="0" src="https://www.paypalobjects.com/en_US/i/scr/pixel.gif" width="1" height="1">
-</form>
-</div>
-
 <div id="game">
   <h1 class="sr-only">gotetris – Tetris on the go</h1>
   <div id="wrap">
@@ -1325,21 +1303,33 @@ class Game {
    fitWell()
    {
       var w = window.innerWidth, h = window.innerHeight;
+      if (window.visualViewport && visualViewport.scale <= 1) {
+         w = Math.min(w, Math.round(visualViewport.width));
+         h = Math.min(h, Math.round(visualViewport.height));
+      }
+      // the game area itself is the real limit (mobile address bars change the viewport)
+      var gameEl = $("#game")[0];
+      if (gameEl.clientHeight > 0) h = Math.min(h, gameEl.clientHeight);
+      if (gameEl.clientWidth > 0) w = Math.min(w, gameEl.clientWidth);
       var portrait = h >= w;
       var buttons = Game.showButtons;
       var btn = Math.round(Math.min(110, Math.max(48, Math.min(w/4.6, h/9))));
       // like the original: cell = available height / 20 rows (and width / 10 columns);
-      // 16px = page padding 4 + well margin 2 + well border 2, on both sides
-      var roomH = h - 16 - (portrait && buttons ? btn*2.45 : 0);
-      var size = Math.floor(Math.min(roomH/20, (w-16)/10));
+      // the page padding grows with the phone's safe areas (notch, home bar), so measure it;
+      // + 8px = well margin 2 + well border 2, on both sides
+      var cs = getComputedStyle(gameEl);
+      var padY = (parseFloat(cs.paddingTop) || 4) + (parseFloat(cs.paddingBottom) || 4) + 8;
+      var padX = (parseFloat(cs.paddingLeft) || 4) + (parseFloat(cs.paddingRight) || 4) + 8;
+      var roomH = h - padY - (portrait && buttons ? btn*2.45 : 0);
+      var size = Math.floor(Math.min(roomH/20, (w-padX)/10));
       if (!portrait && buttons) {
          // landscape: the well takes the full height, the buttons fit the column beside it
          // (centered well => each side column needs ~4.1 buttons); shrink the well only if
          // the buttons would get too small
-         btn = Math.min(110, h/5, (w - 16 - size*10.5) / 8.2);
+         btn = Math.min(110, h/5, (w - padX - size*10.5) / 8.2);
          if (btn < 48) {
             btn = 48;
-            size = Math.floor((w - 16 - btn*8.2) / 10.5);
+            size = Math.floor((w - padX - btn*8.2) / 10.5);
          }
          btn = Math.round(btn);
       }
@@ -1354,6 +1344,18 @@ class Game {
       var lefty = type == "landscape-secondary" || (!type && window.orientation == -90);
       $("#game").attr("class", (portrait ? "portrait" : lefty ? "landscape lefty" : "landscape") + (buttons ? "" : " no-buttons"));
       this.cellSize = size;
+      this.placeNext();
+   }
+
+   // keep the next-piece preview clear of the corner menu button when it sits over the well
+   placeNext()
+   {
+      var el = this.nextWell.el[0], corner = document.getElementById("pause-corner");
+      el.style.marginTop = "";
+      if (!corner) return;
+      var c = corner.getBoundingClientRect(), n = el.getBoundingClientRect();
+      if (!c.width || n.left > c.right || n.right < c.left) return;
+      if (n.top < c.bottom + 4) el.style.marginTop = Math.ceil(c.bottom + 4 - n.top) + "px";
    }
 
    nextShape()
@@ -1394,6 +1396,7 @@ class Game {
       this.nextWell.init(paintCur[0].length, paintCur.length);
       this.nextWell.el[0].style.setProperty("--next-w", paintCur[0].length);
       this.nextWell.paintShape(paintCur, {x: 0, y: 0}, Object.keys(shapes)[paintShp], true);
+      this.placeNext();
    }
 
    getOrigin(respectOrigin, key, r)
@@ -1734,27 +1737,35 @@ class Controls {
    initTouch()
    {
       var game = this.game;
-      var wrap = $("#wrap")[0];
+      // the whole game area takes gestures, not just the well (buttons and boards have their own)
+      var area = $("#game")[0];
       var s = null;
 
-      wrap.addEventListener("pointerdown", function(event) {
+      area.addEventListener("pointerdown", function(event) {
          if (event.button > 0 || $("#again").is(":visible")) return;
+         if (event.target.closest("#dock, #paused, #again, #pause-corner, button, a, input")) return;
          s = { id: event.pointerId, x: event.clientX, y: event.clientY, t: event.timeStamp,
                moved: false, mx: 0, my: 0, rotated: false,
+               lx: event.clientX, ly: event.clientY, x0: event.clientX, y0: event.clientY,
                track: [{ x: event.clientX, y: event.clientY, t: event.timeStamp }] };
-         if (wrap.setPointerCapture) wrap.setPointerCapture(event.pointerId);
+         if (area.setPointerCapture) area.setPointerCapture(event.pointerId);
       });
 
       // one finger steers freely: sideways moves a column per cell, down pulls the piece down
       // (moving back up and down again keeps pulling), swipe up rotates once
-      wrap.addEventListener("pointermove", function(event) {
+      area.addEventListener("pointermove", function(event) {
          if (!s || event.pointerId != s.id) return;
          var cell = game.cellSize;
+         // while pulling down, sideways drift from a slightly slanted finger is ignored:
+         // only clearly sideways motion moves the piece
+         var ddx = event.clientX - s.lx, ddy = event.clientY - s.ly;
+         s.lx = event.clientX; s.ly = event.clientY;
+         if (ddy > 0 && Math.abs(ddx) < ddy * Controls.slant) s.x += ddx;
          var dx = event.clientX - s.x, dy = event.clientY - s.y;
          s.track.push({ x: event.clientX, y: event.clientY, t: event.timeStamp });
          while (s.track.length > 2 && event.timeStamp - s.track[0].t > 100) s.track.shift();
 
-         if (!s.moved && Math.hypot(dx, dy) > cell * .5) s.moved = true;
+         if (!s.moved && Math.hypot(event.clientX - s.x0, event.clientY - s.y0) > cell * .5) s.moved = true;
          if (!s.moved) return;
 
          var n = Math.trunc(dx / (cell * .9));
@@ -1771,7 +1782,7 @@ class Controls {
          while (s.my < m) { s.my++; game.moveShape(0,1); }
       });
 
-      wrap.addEventListener("pointerup", function(event) {
+      area.addEventListener("pointerup", function(event) {
          if (!s || event.pointerId != s.id) return;
          var cell = game.cellSize;
          var dy = event.clientY - s.y;
@@ -1779,16 +1790,16 @@ class Controls {
             if (event.timeStamp - s.t < 500) game.rotateShape();
          }
          else if (dy > cell) {
-            // a quick, mostly downward flick at the end drops the piece
+            // a fast, long, clearly downward flick at the end drops the piece
             var first = s.track[0];
             var vy = event.clientY - first.y, vx = event.clientX - first.x;
             var speed = vy / Math.max(1, event.timeStamp - first.t);
-            if (speed > Controls.flickSpeed && vy > Math.abs(vx) * 1.5) game.dropShape();
+            if (speed > Controls.flickSpeed && vy > cell * Controls.flickCells && vy > Math.abs(vx) * 2) game.dropShape();
          }
          s = null;
       });
 
-      wrap.addEventListener("pointercancel", function() { s = null; });
+      area.addEventListener("pointercancel", function() { s = null; });
    }
 
    initKeys()
@@ -1844,7 +1855,9 @@ class Controls {
 
 Controls.repeatDelay = 170;   // ms before a held button starts repeating
 Controls.repeatRate = 55;     // ms between repeats
-Controls.flickSpeed = .9;     // px/ms downward to count as a flick (drop)
+Controls.flickSpeed = 1.4;    // px/ms downward to count as a flick (drop)
+Controls.flickCells = 2;      // ...covering at least this many cells in its last 100ms
+Controls.slant = .6;          // pulling down, sideways drift under this ratio (~30°) is ignored
 
 // best score kept in the browser
 class BestScore {
