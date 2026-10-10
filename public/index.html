@@ -1755,7 +1755,7 @@ class Controls {
       // (moving back up and down again keeps pulling), swipe up rotates once
       area.addEventListener("pointermove", function(event) {
          if (!s || event.pointerId != s.id) return;
-         var cell = game.cellSize;
+         var cell = Math.max(game.cellSize, Controls.minStep);
          // while pulling down, sideways drift from a slightly slanted finger is ignored:
          // only clearly sideways motion moves the piece
          var ddx = event.clientX - s.lx, ddy = event.clientY - s.ly;
@@ -1784,7 +1784,7 @@ class Controls {
 
       area.addEventListener("pointerup", function(event) {
          if (!s || event.pointerId != s.id) return;
-         var cell = game.cellSize;
+         var cell = Math.max(game.cellSize, Controls.minStep);
          var dy = event.clientY - s.y;
          if (!s.moved) {
             if (event.timeStamp - s.t < 500) game.rotateShape();
@@ -1855,6 +1855,7 @@ class Controls {
 
 Controls.repeatDelay = 170;   // ms before a held button starts repeating
 Controls.repeatRate = 55;     // ms between repeats
+Controls.minStep = 30;        // px of finger travel per step at least, however small the cells
 Controls.flickSpeed = 1.4;    // px/ms downward to count as a flick (drop)
 Controls.flickCells = 2;      // ...covering at least this many cells in its last 100ms
 Controls.slant = .6;          // pulling down, sideways drift under this ratio (~30°) is ignored
