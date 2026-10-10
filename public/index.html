@@ -1997,9 +1997,10 @@ class Music {
          song.steps = step;
          song.bass = [];
          step = 0;
+         var roots = Object.assign({}, Music.roots, song.roots);
          parse(song.chords, function(tok) {
             var p = tok.split(":");
-            for (var i = 0; i < p[1] * 2; i++) song.bass[step++] = Music.roots[p[0]];
+            for (var i = 0; i < p[1] * 2; i++) song.bass[step++] = roots[p[0]];
          });
       });
       Music.song = Music.songs[0];
