@@ -300,7 +300,8 @@ table {
   font-family:monospace;
   font-size: calc(var(--cell) * 1.2 * var(--hud, 1));
   font-weight:bold;
-  color:rgba(40, 40, 40, 0.5);
+  color:rgb(40, 40, 40);
+  opacity: .4; /* like the next-piece preview */
   text-shadow: 1px 1px 4px rgba(50, 50, 50, 0.25);
   pointer-events: none;
 }
@@ -627,18 +628,6 @@ table {
   transform: rotate(40deg) scale(.9);
 }
 
-/* pause is small and out of the way */
-#pause {
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 48 48' fill='none' stroke='%23484850' stroke-width='5' stroke-linecap='round'%3E%3Cpath d='M18 13V35M30 13V35'/%3E%3C/svg%3E");
-}
-#control td#pause {
-  transform: scale(.62);
-  opacity: .6;
-}
-#control td#pause.pressed {
-  transform: scale(.56);
-}
-
 /* touch gestures on the well */
 #wrap {
   touch-action: none;
@@ -647,7 +636,7 @@ table {
   -webkit-touch-callout: none;
 }
 
-/* buttons switched off (the default): gestures and keys only, a small pause icon in the corner */
+/* buttons switched off (the default): gestures and keys only */
 #game.no-buttons #dock {
   visibility: hidden;
 }
@@ -655,8 +644,8 @@ table {
   display: none;
 }
 
-#pause-corner {
-  display: none;
+#pause-corner { /* menu (pause), always in the corner */
+  display: block;
   position: fixed;
   z-index: 40;
   top: max(6px, env(safe-area-inset-top));
@@ -672,9 +661,6 @@ table {
 }
 #pause-corner.pressed {
   transform: scale(.9);
-}
-#game.no-buttons ~ #pause-corner {
-  display: block;
 }
 
 .switches {
@@ -763,7 +749,7 @@ table {
         <td id="right" class="btn" role="button" aria-label="Move right"></td>
       </tr>
       <tr>
-        <td id="pause" class="btn" role="button" aria-label="Pause"></td>
+        <td></td>
         <td id="drop" class="btn" role="button" aria-label="Drop"></td>
         <td></td>
       </tr>
@@ -1308,7 +1294,7 @@ class Game {
          Music.play();
       }
       if (p) $("#paused").css("display", "flex"); else $("#paused").hide();
-      $("#pause").attr("class", p ? "btn on" : "btn");
+      $("#pause-corner").toggleClass("on", p);
    }
 
    initWell()
@@ -1683,7 +1669,7 @@ class Game {
        if (this.paused) {
           this.paused = false;
           $("#paused").hide();
-          $("#pause").attr("class", "btn");
+          $("#pause-corner").removeClass("on");
        }
        this.showBest();
        this.well.el.find(".nonempty").removeClass("nonempty").removeClass("shape");
@@ -1724,7 +1710,6 @@ class Controls {
       this.initButton("#right", function() { game.moveShape(1,0); }, true);
       this.initButton("#rotate", function() { game.rotateShape(); });
       this.initButton("#drop", function() { game.dropShape(); });
-      this.initButton("#pause", function() { game.setPaused(!game.paused); });
       this.initButton("#pause-corner", function() { game.setPaused(!game.paused); });
 
       // pause screen switches; taps on them don't resume the game
