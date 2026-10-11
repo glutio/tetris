@@ -58,3 +58,7 @@ After changing the `Music` code, run `node tools/sync-song-test.js` so the teste
 ## Running locally
 
 Open `public/index.html` in a browser – no build step. It's deployed as static assets with Cloudflare (`wrangler.jsonc`).
+
+## License
+
+Copyright © 2017-2026 Eugene Pistrak. All rights reserved. The source is visible for reading only; see [LICENSE](LICENSE).
