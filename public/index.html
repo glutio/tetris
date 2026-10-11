@@ -593,10 +593,10 @@ table {
   transform: translateY(calc(var(--btn) * .13));
 }
 #game.landscape #control {
-  transform: translate(calc(var(--btn) * .2), calc(var(--btn) * .4));
+  transform: translate(calc(var(--btn) * .25 + env(safe-area-inset-right, 0px) * .5), calc(var(--btn) * .6 + env(safe-area-inset-bottom, 0px) * .5));
 }
 #game.landscape.lefty #control {
-  transform: translate(calc(var(--btn) * -.2), calc(var(--btn) * .4));
+  transform: translate(calc(var(--btn) * -.25 - env(safe-area-inset-left, 0px) * .5), calc(var(--btn) * .6 + env(safe-area-inset-bottom, 0px) * .5));
 }
 
 #control td {
@@ -1349,7 +1349,7 @@ class Game {
       if (gameEl.clientWidth > 0) w = Math.min(w, gameEl.clientWidth);
       var portrait = h >= w;
       var buttons = Game.showButtons;
-      var btn = Math.round(Math.min(110, Math.max(48, Math.min(w/4.6, h/9))));
+      var btn = Math.round(Math.max(48, Math.min(Game.btnSize, w/4.6, h/9)));
       // like the original: cell = available height / 20 rows (and width / 10 columns);
       // the page padding grows with the phone's safe areas (notch, home bar), so measure it;
       // + 8px = well margin 2 + well border 2, on both sides
@@ -1359,14 +1359,16 @@ class Game {
       var roomH = h - padY - (portrait && buttons ? btn*2.45 : 0);
       var size = Math.floor(Math.min(roomH/20, (w-padX)/10));
       if (!portrait && buttons) {
-         // landscape: the well takes the full height, the buttons fit the column beside it
-         // (centered well => each side column needs ~4.1 buttons); shrink the well only if
-         // the buttons would get too small
-         btn = Math.min(110, h/5, (w - padX - size*10.5) / 8.2);
-         if (btn < 48) {
-            btn = 48;
-            size = Math.floor((w - padX - btn*8.2) / 10.5);
+         // landscape: the buttons keep their thumb size in the column beside the well
+         // (centered well => each side column needs ~4.1 buttons); the well gives way,
+         // and only when it would get too small do the buttons shrink
+         btn = Math.min(Game.btnSize, h/4.4);
+         var fit = Math.floor((w - padX - btn*8.2) / 10.5);
+         if (fit < 14) {
+            fit = Math.min(size, 14);
+            btn = Math.max(48, (w - padX - fit*10.5) / 8.2);
          }
+         size = Math.min(size, fit);
          btn = Math.round(btn);
       }
       size = Math.max(8, size);
@@ -2126,9 +2128,10 @@ class Music {
       while (Music.next < ctx.currentTime + Music.ahead) {
          Music.playStep(Music.song, Music.step, Music.next);
          Music.next += 15 / Music.bpm;
+         Music.played += 15 / Music.bpm;
          Music.step = (Music.step + 1) % Music.song.steps;
-         // each tune plays this many times, then another one takes over
-         if (Music.step == 0 && ++Music.loops >= Music.repeats) Music.pickSong();
+         // each tune plays whole loops for about Music.tuneLength seconds, then another one takes over
+         if (Music.step == 0 && Music.played + Music.song.steps * 7.5 / Music.bpm >= Music.tuneLength) Music.pickSong();
       }
    }
 
@@ -2342,7 +2345,7 @@ class Music {
       var others = Music.songs.filter(function(s) { return s != Music.song || Music.songs.length == 1; });
       Music.song = others[Math.floor(Math.random() * others.length)];
       Music.step = 0;
-      Music.loops = 0;
+      Music.played = 0;
    }
 
    static pause()
@@ -2383,8 +2386,8 @@ Music.mute = {};
 Music.volume = .6;
 Music.bpm = 140;
 Music.step = 0;
-Music.loops = 0;
-Music.repeats = 3;
+Music.played = 0;  // s of the current tune so far
+Music.tuneLength = 120; // s per tune (rounded to whole loops)
 Music.ahead = .4; // s scheduled in advance, rides out main-thread hiccups
 Music.next = 0;
 Music.playing = false;
@@ -2488,6 +2491,7 @@ class InstallApp {
 var game = new Game();
 Music.init();
 // on-screen buttons are off unless the player switches them on (pause screen); remembered
+Game.btnSize = 80; // px, about a thumb; same in portrait and landscape
 Game.showButtons = (function() { try { return localStorage.getItem("gotetris.buttons") == "1"; } catch (e) { return false; } })();
 game.start();
 ThaiLetter.init();

@@ -244,9 +244,10 @@ class Music {
       while (Music.next < ctx.currentTime + Music.ahead) {
          Music.playStep(Music.song, Music.step, Music.next);
          Music.next += 15 / Music.bpm;
+         Music.played += 15 / Music.bpm;
          Music.step = (Music.step + 1) % Music.song.steps;
-         // each tune plays this many times, then another one takes over
-         if (Music.step == 0 && ++Music.loops >= Music.repeats) Music.pickSong();
+         // each tune plays whole loops for about Music.tuneLength seconds, then another one takes over
+         if (Music.step == 0 && Music.played + Music.song.steps * 7.5 / Music.bpm >= Music.tuneLength) Music.pickSong();
       }
    }
 
@@ -460,7 +461,7 @@ class Music {
       var others = Music.songs.filter(function(s) { return s != Music.song || Music.songs.length == 1; });
       Music.song = others[Math.floor(Math.random() * others.length)];
       Music.step = 0;
-      Music.loops = 0;
+      Music.played = 0;
    }
 
    static pause()
@@ -501,8 +502,8 @@ Music.mute = {};
 Music.volume = .6;
 Music.bpm = 140;
 Music.step = 0;
-Music.loops = 0;
-Music.repeats = 3;
+Music.played = 0;  // s of the current tune so far
+Music.tuneLength = 120; // s per tune (rounded to whole loops)
 Music.ahead = .4; // s scheduled in advance, rides out main-thread hiccups
 Music.next = 0;
 Music.playing = false;

@@ -14,7 +14,7 @@ A small, warm Tetris made as a gift for Tak – play it at **[gotetris.com](http
 
 - **Special pieces** – a golden **TAK** word (rotate it to break it into its letters T, A, K), a beating **heart**, and **Thai letters**. They crumble like sand when they land.
 - **Learn Thai while you rest** – the pause screen shows a letter of the Thai alphabet with its name and meaning; swipe through all 44.
-- **Music** – public-domain folk and classical tunes (Kalinka, Korobeiniki, In the Hall of the Mountain King, Can-Can) played live with WebAudio. They speed up with the game, and each tune plays three times before another takes over.
+- **Music** – public-domain folk and classical tunes (Kalinka, Korobeiniki, In the Hall of the Mountain King, Can-Can) played live with WebAudio. They speed up with the game, and each tune plays for about two minutes before another takes over.
 - **Plays anywhere** – one self-contained HTML file, no libraries; installable as an app; works on phones (portrait or landscape) and desktops.
 - **Best score** kept in the browser.
 
