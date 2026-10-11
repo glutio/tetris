@@ -218,6 +218,7 @@ table {
 }
 #game.landscape #dock {
   order: 3;
+  flex: var(--dock, 1 1 0); /* wide enough for the buttons; the empty side takes the rest */
   align-self: center;
   margin-top: 18vh; /* a little below center, where the thumb rests */
 }
@@ -681,6 +682,12 @@ table {
   font-size: 50%;
   font-family: system-ui, sans-serif;
 }
+#version { /* fine print */
+  margin-bottom: 0;
+  font-size: 30%;
+  font-family: system-ui, sans-serif;
+  opacity: .45;
+}
 .switch {
   display: inline-flex;
   align-items: center;
@@ -742,6 +749,7 @@ table {
       <p><button id="install" type="button">Install app</button></p>
       <p id="ios-install" class="hint">Play full screen: tap <b>Share</b> <span aria-hidden="true">⎙</span> then <b>Add to Home Screen</b></p>
       <p class="switches"><button id="buttons-switch" class="switch" type="button" role="switch" aria-checked="false"><span class="track"></span>Buttons</button><button id="music-switch" class="switch" type="button" role="switch" aria-checked="true"><span class="track"></span>Music</button></p>
+      <p id="version">v2.0.0</p>
       <section class="help sr-only">
         <h2>How to play</h2>
         <p>Fit the falling blocks into full rows to clear them. Watch out for the special Thai letter, heart and TAK pieces – they crumble like sand when they land.</p>
@@ -1358,26 +1366,31 @@ class Game {
       var padX = (parseFloat(cs.paddingLeft) || 4) + (parseFloat(cs.paddingRight) || 4) + 8;
       var roomH = h - padY - (portrait && buttons ? btn*2.45 : 0);
       var size = Math.floor(Math.min(roomH/20, (w-padX)/10));
+      var dockW = 0;
       if (!portrait && buttons) {
-         // landscape: the buttons keep their thumb size in the column beside the well
-         // (centered well => each side column needs ~4.1 buttons); the well gives way,
-         // and only when it would get too small do the buttons shrink
+         // landscape: full-height well, thumb-size buttons in the column beside it
+         // (3 buttons + spacing + gap + nudge ~ 4 buttons); if the centered well leaves too little room,
+         // the button column takes what it needs and the well moves aside (keeping ~3 cells
+         // on the other side for the next piece); only on tiny screens do the buttons shrink
          btn = Math.min(Game.btnSize, h/4.4);
-         var fit = Math.floor((w - padX - btn*8.2) / 10.5);
-         if (fit < 14) {
-            fit = Math.min(size, 14);
-            btn = Math.max(48, (w - padX - fit*10.5) / 8.2);
+         if (w - padX - size*10.5 < btn*4 + size*3) {
+            size = Math.floor((w - padX - btn*4) / 13.5);
+            if (size < 14) {
+               size = 14;
+               btn = Math.max(48, (w - padX - size*13.5) / 4);
+            }
          }
-         size = Math.min(size, fit);
          btn = Math.round(btn);
+         dockW = Math.max(btn*4, (w - padX - size*10.5) / 2);
       }
       size = Math.max(8, size);
       var root = document.documentElement.style;
       root.setProperty("--cell", size + "px");
       root.setProperty("--ncell", Math.round(size * 2 / 3) + "px");
       root.setProperty("--btn", btn + "px");
+      root.setProperty("--dock", dockW ? "0 0 " + Math.floor(dockW) + "px" : "1 1 0");
       // landscape: score/time grow into the free side column (up to 2x)
-      var free = (w - size*10.4) / 2 - size*1.1;
+      var free = (dockW || (w - size*10.4) / 2) - size*1.1;
       root.setProperty("--hud", portrait ? 1 : Math.max(1, Math.min(2, free / (size*3.4), 56 / (size*1.2))).toFixed(2));
 
       // upside-down landscape puts the buttons on the left
