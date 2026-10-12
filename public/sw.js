@@ -1,7 +1,7 @@
 // gotetris service worker: lets the home screen app start offline.
 // Network first, so players always get the latest version when online.
 const CACHE = "gotetris-v1";
-const PRECACHE = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png"];
+const PRECACHE = ["/", "/manifest.webmanifest", "/icon-192.png", "/icon-512.png", "/apple-touch-icon.png", "/icon-maskable-512.png", "/favicon.svg"];
 
 self.addEventListener("install", e => {
    e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECACHE)).then(() => self.skipWaiting()));
