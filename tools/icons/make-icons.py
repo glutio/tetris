@@ -36,7 +36,8 @@ def tab(px, block, gap):  # px = units per pixel (64 units = 16px or 32px)
     return "".join(o)
 css = ('<style>.t16,.t32{display:none}@media (max-width:48px){.b{display:none}}'
        '@media (max-width:24px){.t16{display:inline}}@media (min-width:25px) and (max-width:48px){.t32{display:inline}}</style>')
-open("../../public/favicon.svg", "w").write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' + css + blocks() +
+open("../../public/favicon.svg", "w").write('<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">' + css +
+    f'<g transform="translate(32 32) scale({60/48}) translate(-30 -28)">{blocks()}</g>' +  # pieces' 44x48 bbox centered at (30,28) -> fill 60 of 64
     f'<g class="t16">{tab(4, 3, 1)}</g><g class="t32">{tab(2, 6, 2)}</g></svg>')
 # app icons: full-bleed pink tile; pieces (64-unit bbox x 8..52, y 4..52) take `fill` of the side
 def icon(fill):
